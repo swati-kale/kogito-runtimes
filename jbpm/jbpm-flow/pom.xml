@@ -60,6 +60,10 @@
       <artifactId>jaxb-api</artifactId>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+     <groupId>com.google.protobuf</groupId>
+    <artifactId>protobuf-java-util</artifactId>
+    </dependency>
 
     <!-- test -->
     <dependency>

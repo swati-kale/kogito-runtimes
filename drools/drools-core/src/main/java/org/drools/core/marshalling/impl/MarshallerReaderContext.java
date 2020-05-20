@@ -162,7 +162,55 @@ public class MarshallerReaderContext extends ObjectInputStream {
             this.kBase.getProcesses().forEach( p -> this.processes.put(p.getId(), p));
         }
     }
+    
+    public MarshallerReaderContext(
 
+                                   Map<String, Process> processes,
+                                   Map<Integer, BaseNode> sinks,
+                                   ObjectMarshallingStrategyStore resolverStrategyFactory,
+                                   Map<Integer, TimersInputMarshaller> timerReaders,
+                                   Environment env,
+                                   InternalKnowledgeBase kBase,
+                                   boolean marshalProcessInstances,
+                                   boolean marshalWorkItems) throws IOException {
+
+        this.processes = processes;
+        this.stream = this;
+        this.kBase = kBase;
+        this.sinks = sinks;
+        this.readersByInt = timerReaders;
+        this.handles = new HashMap<>();
+        this.rightTuples = new HashMap<>();
+        this.terminalTupleMap = new HashMap<>();
+        this.filter = new PBActivationsFilter();
+        this.entryPoints = new HashMap<>();
+        this.propagationContexts = new HashMap<>();
+        if (resolverStrategyFactory == null) {
+            ObjectMarshallingStrategy[] strats = (ObjectMarshallingStrategy[]) env.get(EnvironmentName.OBJECT_MARSHALLING_STRATEGIES);
+            if (strats == null) {
+                strats = new ObjectMarshallingStrategy[]{new SerializablePlaceholderResolverStrategy(ClassObjectMarshallingStrategyAcceptor.DEFAULT)};
+            }
+            this.resolverStrategyFactory = new ObjectMarshallingStrategyStoreImpl(strats);
+        } else {
+            this.resolverStrategyFactory = resolverStrategyFactory;
+        }
+        this.usedStrategies = new HashMap<>();
+        this.strategyContexts = new HashMap<>();
+
+        this.marshalProcessInstances = marshalProcessInstances;
+        this.marshalWorkItems = marshalWorkItems;
+        this.env = env;
+
+        this.nodeMemories = new HashMap<>();
+        this.timerNodeSchedulers = new HashMap<>();
+
+        this.parameterObject = null;
+        if (this.kBase != null) {
+
+            this.kBase.getProcesses().forEach(p -> this.processes.put(p.getId(), p));
+        }
+    }
+    
     @Override
     protected Class< ? > resolveClass(ObjectStreamClass desc) throws IOException,
                                                              ClassNotFoundException {

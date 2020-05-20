@@ -65,6 +65,7 @@ public class PersistenceGenerator extends AbstractGenerator {
     
 	private static final String FILESYSTEM_PERSISTENCE_TYPE = "filesystem";
 	private static final String INFINISPAN_PERSISTENCE_TYPE = "infinispan";
+	private static final String MONGODB_PERSISTENCE_TYPE = "mongodb";
 	private static final String DEFAULT_PERSISTENCE_TYPE = INFINISPAN_PERSISTENCE_TYPE;
     
 	private static final String TEMPLATE_NAME = "templateName";
@@ -121,7 +122,9 @@ public class PersistenceGenerator extends AbstractGenerator {
         		inifinispanBasedPersistence(generatedFiles);
         	} else if (persistenceType.equals(FILESYSTEM_PERSISTENCE_TYPE)) {
         		fileSystemBasedPersistence(generatedFiles);
-        	}
+        	}else if (persistenceType.equals(MONGODB_PERSISTENCE_TYPE)) {
+				mongodbBasedPersistence(generatedFiles);
+			}
 
         }
 
@@ -331,6 +334,49 @@ public class PersistenceGenerator extends AbstractGenerator {
                                              clazzName.replace('.', '/') + ".java",
                                              compilationUnit.toString().getBytes(StandardCharsets.UTF_8))); 
         
+        persistenceProviderClazz.getMembers().sort(new BodyDeclarationComparator());
+    }
+    
+
+    private void mongodbBasedPersistence(List<GeneratedFile> generatedFiles) {
+        ClassOrInterfaceDeclaration persistenceProviderClazz = new ClassOrInterfaceDeclaration()
+                                                                                                .setName("KogitoProcessInstancesFactoryImpl").setModifiers(Modifier.Keyword.PUBLIC)
+                                                                                                .addExtendedType("org.kie.kogito.persistence.KogitoProcessInstancesFactory");
+
+        CompilationUnit compilationUnit = new CompilationUnit("org.kie.kogito.persistence");
+        compilationUnit.getTypes().add(persistenceProviderClazz);
+
+        persistenceProviderClazz.addConstructor(Keyword.PUBLIC).setBody(new BlockStmt().addStatement(
+                                                                                                     new ExplicitConstructorInvocationStmt(false, null, NodeList.nodeList(new NullLiteralExpr()))));
+
+        ConstructorDeclaration constructor = persistenceProviderClazz.addConstructor(Keyword.PUBLIC);
+
+        List<Expression> paramNames = new ArrayList<>();
+        for (String parameter : parameters) {
+            String name = "param" + paramNames.size();
+            constructor.addParameter(parameter, name);
+            paramNames.add(new NameExpr(name));
+        }
+        BlockStmt body = new BlockStmt();
+        ExplicitConstructorInvocationStmt superExp = new ExplicitConstructorInvocationStmt(false, null,
+                                                                                           NodeList.nodeList(paramNames));
+        body.addStatement(superExp);
+
+        constructor.setBody(body);
+        if (useInjection()) {
+            annotator.withApplicationComponent(persistenceProviderClazz);
+            annotator.withInjection(constructor);
+
+        }
+        String pkgName = compilationUnit.getPackageDeclaration().map(pd -> pd.getName().toString()).orElse("");
+        Optional<ClassOrInterfaceDeclaration> firstClazz = persistenceProviderClazz.findFirst(ClassOrInterfaceDeclaration.class);
+        Optional<String> firstClazzName = firstClazz.map(c -> c.getName().toString());
+        if (firstClazzName.isPresent()) {
+            String clazzName = pkgName + "." + firstClazzName.get();
+
+            generatedFiles.add(new GeneratedFile(GeneratedFile.Type.CLASS, clazzName.replace('.', '/') + ".java",
+                                                 compilationUnit.toString().getBytes(StandardCharsets.UTF_8)));
+        }
         persistenceProviderClazz.getMembers().sort(new BodyDeclarationComparator());
     }
 }

@@ -20,8 +20,13 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-public interface ObjectMarshallingStrategy {
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+public interface ObjectMarshallingStrategy {
+     
+    ObjectMapper MAPPER = new ObjectMapper();
+    
     /**
      * Override this method if you want multiple marshalling strategies of the same implementation in environment
      * @return the unique name in runtime environment of the ObjectMarshallingStrategy
@@ -87,4 +92,20 @@ public interface ObjectMarshallingStrategy {
         public void write(ObjectOutputStream oos) throws IOException;
     }
 
-}
+   default String marshalToJson(Object object) {
+        try {
+            return MAPPER.writeValueAsString(object);
+        } catch (JsonProcessingException e) {
+            throw new MarshallingException(e);
+        }
+    }
+
+    default Object unmarshalFromJson(String dataType, String json) {
+        try {
+            Class<?> loadClass = Thread.currentThread().getContextClassLoader().loadClass(dataType);
+            return MAPPER.readValue(json, loadClass);
+        } catch (ClassNotFoundException | JsonProcessingException e) {
+            throw new UnmarshallingException(e);
+        }
+    }
+}  

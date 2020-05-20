@@ -13,5 +13,6 @@
     <module>infinispan-persistence-addon</module>
     <module>infinispan-quarkus-health-addon</module>
     <module>filesystem-persistence-addon</module>
+    <module>mongodb-persistence-addon</module>
   </modules>
 </project>

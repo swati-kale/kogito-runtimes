@@ -143,6 +143,7 @@
     <version.springboot>2.2.5.RELEASE</version.springboot>
     <version.spring.framework>5.2.4.RELEASE</version.spring.framework>
     <version.xmlunit>2.2.1</version.xmlunit>
+    <version.org.mongo>3.12.2</version.org.mongo>
     <version.jsonschema2pojo-maven-plugin>1.0.1</version.jsonschema2pojo-maven-plugin>
 
     <!-- container images for testing -->
@@ -318,7 +319,13 @@
         <artifactId>protobuf-java</artifactId>
         <version>${version.com.google.protobuf}</version>
       </dependency>
-
+      
+      <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java-util</artifactId>
+        <version>${version.com.google.protobuf}</version>
+      </dependency>  
+      
       <dependency>
         <groupId>org.eclipse.jdt</groupId>
         <artifactId>ecj</artifactId>
@@ -770,6 +777,13 @@
         <groupId>io.cloudevents</groupId>
         <artifactId>cloudevents-api</artifactId>
         <version>${version.io.cloudevents}</version>
+      </dependency>
+      
+      <!-- mongoDB related -->
+      <dependency>
+        <groupId>org.mongodb</groupId>
+        <artifactId>mongo-java-driver</artifactId>
+        <version>${version.org.mongo}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
