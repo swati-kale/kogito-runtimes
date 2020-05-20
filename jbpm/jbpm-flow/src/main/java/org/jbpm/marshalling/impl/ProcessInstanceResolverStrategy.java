@@ -21,6 +21,7 @@ import java.io.ObjectOutputStream;
 
 import org.drools.core.common.InternalKnowledgeRuntime;
 import org.drools.core.common.InternalWorkingMemory;
+import org.drools.core.marshalling.impl.JavaSerializableResolverStrategy;
 import org.drools.core.marshalling.impl.MarshallerReaderContext;
 import org.drools.core.marshalling.impl.MarshallerWriteContext;
 import org.jbpm.process.instance.ProcessInstanceManager;
@@ -30,6 +31,12 @@ import org.jbpm.ruleflow.instance.RuleFlowProcessInstance;
 import org.kie.api.definition.process.Process;
 import org.kie.api.marshalling.ObjectMarshallingStrategy;
 import org.kie.api.runtime.process.ProcessInstance;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * When using this strategy, knowledge session de/marshalling process will make sure that
@@ -49,7 +56,9 @@ import org.kie.api.runtime.process.ProcessInstance;
 public class ProcessInstanceResolverStrategy
         implements
         ObjectMarshallingStrategy {
-
+	
+	private static ObjectMapper MAPPER = new ObjectMapper();
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProcessInstanceResolverStrategy.class);
     public boolean accept(Object object) {
         if ( object instanceof ProcessInstance ) {
             return true;
@@ -195,5 +204,35 @@ public class ProcessInstanceResolverStrategy
         // no context needed
         return null;
     }
+
+    @Override
+    public String marshalToJson(Object object) {
+
+		String json = null;
+		try {
+			json = MAPPER.writeValueAsString(object);
+		} catch (JsonProcessingException e) {
+			 LOGGER.error("Error while writing object as json", e);
+		}
+		return json;
+
+	}
+
+    @Override
+	public Object unmarshlFromJson(String dataType, String json) {
+		Class<?> loadClass = null;
+		try {
+			loadClass = Thread.currentThread().getContextClassLoader().loadClass(dataType);
+			return MAPPER.readValue(json, loadClass);
+		} catch (ClassNotFoundException e) {
+			 LOGGER.error("Error while reading object from json", e);
+
+		} catch (JsonMappingException e) {
+			 LOGGER.error("Error while writing object as json", e);
+		} catch (JsonProcessingException e) {
+			 LOGGER.error("Error while writing object as json", e);
+		}
+		return null;
+	}
 
 }

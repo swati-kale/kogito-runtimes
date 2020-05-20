@@ -25,6 +25,12 @@ import java.util.Map;
 
 import org.kie.api.marshalling.ObjectMarshallingStrategy;
 import org.kie.api.marshalling.ObjectMarshallingStrategyAcceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class IdentityPlaceholderResolverStrategy
     implements
@@ -35,6 +41,8 @@ public class IdentityPlaceholderResolverStrategy
 
     private String name = IdentityPlaceholderResolverStrategy.class.getName();
     private ObjectMarshallingStrategyAcceptor acceptor;
+    private static ObjectMapper MAPPER = new ObjectMapper();
+    private static final Logger LOGGER = LoggerFactory.getLogger(IdentityPlaceholderResolverStrategy.class);
     
     public IdentityPlaceholderResolverStrategy(ObjectMarshallingStrategyAcceptor acceptor) {
         this.acceptor = acceptor;
@@ -134,4 +142,34 @@ public class IdentityPlaceholderResolverStrategy
             objects.put(idEntry.getValue(), idEntry.getKey());
         }
     }
+
+    @Override
+    public String marshalToJson(Object object) {
+
+		String json = null;
+		try {
+			json = MAPPER.writeValueAsString(object);
+		} catch (JsonProcessingException e) {
+			 LOGGER.error("Error while writing object as json", e);
+		}
+		return json;
+
+	}
+
+    @Override
+	public Object unmarshlFromJson(String dataType, String json) {
+		Class<?> loadClass = null;
+		try {
+			loadClass = Thread.currentThread().getContextClassLoader().loadClass(dataType);
+			return MAPPER.readValue(json, loadClass);
+		} catch (ClassNotFoundException e) {
+			 LOGGER.error("Error while reading object from json", e);
+
+		} catch (JsonMappingException e) {
+			 LOGGER.error("Error while writing object as json", e);
+		} catch (JsonProcessingException e) {
+			 LOGGER.error("Error while writing object as json", e);
+		}
+		return null;
+	}
 }

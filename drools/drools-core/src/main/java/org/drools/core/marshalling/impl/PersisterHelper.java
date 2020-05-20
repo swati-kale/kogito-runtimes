@@ -453,4 +453,44 @@ public class PersisterHelper {
         }
         return NodeTypeEnums.hasNodeMemory( leftTupleSource ) ? true : hasNodeMemory(leftTupleSource.getLeftTupleSource());
     }
+
+	public static Header writeToStreamWithHeaderContent(ProcessMarshallerWriteContext context) throws IOException {
+		 ProtobufMessages.Header.Builder _header = ProtobufMessages.Header.newBuilder();
+	        _header.setVersion( ProtobufMessages.Version.newBuilder()
+	                                            .setVersionMajor( Drools.getMajorVersion() )
+	                                            .setVersionMinor( Drools.getMinorVersion() )
+	                                            .setVersionRevision( Drools.getRevisionVersion() )
+	                            .build() );
+	        writeStrategiesIndex( context, _header );
+
+	        writeRuntimeDefinedClasses( context, _header );
+	       // context.stream.write( _header.build().toByteArray() );
+	        return _header.build();
+	}
+	
+	public static void loadContext(MarshallerReaderContext context, ProtobufMessages.Header _header)
+			throws IOException, ClassNotFoundException {
+		for (ProtobufMessages.Header.StrategyIndex _entry : _header.getStrategyList()) {
+			ObjectMarshallingStrategy strategyObject = context.resolverStrategyFactory
+					.getStrategyObject(_entry.getName());
+			if (strategyObject == null) {
+				throw new IllegalStateException("No strategy of type " + _entry.getName() + " available.");
+			}
+			context.usedStrategies.put(_entry.getId(), strategyObject);
+			Context ctx = strategyObject.createContext();
+			context.strategyContexts.put(strategyObject, ctx);
+			if (_entry.hasData() && ctx != null) {
+				ClassLoader classLoader = null;
+				if (context.classLoader != null) {
+					classLoader = context.classLoader;
+				} else if (context.kBase != null) {
+					classLoader = context.kBase.getRootClassLoader();
+				}
+				if (classLoader instanceof ProjectClassLoader) {
+					readRuntimeDefinedClasses(_header, (ProjectClassLoader) classLoader);
+				}
+				ctx.read(new DroolsObjectInputStream(_entry.getData().newInput(), classLoader));
+			}
+		}
+	}
 }

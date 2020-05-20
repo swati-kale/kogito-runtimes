@@ -176,7 +176,7 @@ message Variable {
     optional string name = 1;
     // the actual object reference
     optional int32 strategy_index = 2;
-    optional bytes value = 3;
+    optional string value = 3;
     optional string data_type = 4;
 }
 

@@ -22,16 +22,22 @@ import org.kie.kogito.infinispan.marshallers.FloatMessageMarshaller;
 import org.kie.kogito.infinispan.marshallers.IntegerMessageMarshaller;
 import org.kie.kogito.infinispan.marshallers.LongMessageMarshaller;
 import org.kie.kogito.infinispan.marshallers.StringMessageMarshaller;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 public class ProtoStreamObjectMarshallingStrategy implements ObjectMarshallingStrategy {
     
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProtoStreamObjectMarshallingStrategy.class);
     private SerializationContext serializationContext;
     private Map<String, Class<?>> typeToClassMapping = new ConcurrentHashMap<>();
+    private static ObjectMapper MAPPER = new ObjectMapper();
     
     public ProtoStreamObjectMarshallingStrategy(String proto, MessageMarshaller<?>...marshallers) {
         serializationContext = new SerializationContextImpl(Configuration.builder().build());        
-        
         try {
             serializationContext.registerProtoFiles(FileDescriptorSource.fromResources("kogito-types.proto"));
             registerMarshaller(new StringMessageMarshaller(),
@@ -62,7 +68,6 @@ public class ProtoStreamObjectMarshallingStrategy implements ObjectMarshallingSt
         return serializationContext.canMarshall(object.getClass());
     }
 
-
     @Override
     public byte[] marshal(Context context, ObjectOutputStream os, Object object) throws IOException {
         return ProtobufUtil.toByteArray(serializationContext, object);
@@ -91,6 +96,28 @@ public class ProtoStreamObjectMarshallingStrategy implements ObjectMarshallingSt
             typeToClassMapping.putIfAbsent(marshaller.getTypeName(), marshaller.getJavaClass());
         }
     }
+    
+    @Override
+	 public String marshalToJson(Object object) {
+		String json = null;
+		try {
+			json = MAPPER.writeValueAsString(object);
+		} catch (JsonProcessingException e) {
+			 LOGGER.error("Error while writing object as json", e);
+		}
+		return json;
+  	 
+   }
+
+	@Override
+	public Object unmarshlFromJson(String dataType, String json) {
+		try {
+			return MAPPER.readValue(json, serializationContext.getMarshaller(dataType).getJavaClass());
+		} catch (JsonProcessingException e) {
+			 LOGGER.error("Error while reading object from json", e);
+		}
+		return null;
+	}
 
     /*
      * Not used methods

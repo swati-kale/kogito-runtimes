@@ -40,7 +40,6 @@ import org.kie.api.marshalling.ObjectMarshallingStrategy;
 import org.kie.api.runtime.process.ProcessInstance;
 import org.kie.api.runtime.process.WorkItem;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
 
 public class ProtobufProcessMarshaller
@@ -187,10 +186,8 @@ public class ProtobufProcessMarshaller
             ObjectMarshallingStrategy strategy = context.objectMarshallingStrategyStore.getStrategyObject( value );
             Integer index = context.getStrategyIndex( strategy );
             builder.setStrategyIndex( index )
-                   .setDataType(strategy.getType(value.getClass()))
-                   .setValue( ByteString.copyFrom( strategy.marshal( context.strategyContext.get( strategy ),
-                                                                     context,
-                                                                     value ) ) );
+                   .setDataType(strategy.getType(value.getClass()))      
+                   .setValue(strategy.marshalToJson(value));
         }
         return builder.build();
     }
@@ -204,15 +201,10 @@ public class ProtobufProcessMarshaller
                 ObjectMarshallingStrategy strategy = context.objectMarshallingStrategyStore.getStrategyObject( variable );
                 Integer index = context.getStrategyIndex( strategy );
                 builder.setStrategyIndex( index )
-                    .setDataType(strategy.getType(variable.getClass()))
-                   .setValue( ByteString.copyFrom( strategy.marshal( context.strategyContext.get( strategy ),
-                                                                     context,
-                                                                     variable ) ) );
+                   .setDataType(strategy.getType(variable.getClass()))
+                   .setValue(strategy.marshalToJson(variable));
 
             }
-
-
-
             marshalledVariables.put(key, builder.build());
         }
 
@@ -227,14 +219,9 @@ public class ProtobufProcessMarshaller
                 ObjectMarshallingStrategy strategy = context.objectMarshallingStrategyStore.getStrategyObject( variables.get(key) );
                 Integer index = context.getStrategyIndex( strategy );
                 builder.setStrategyIndex( index )
-                   .setValue( ByteString.copyFrom( strategy.marshal( context.strategyContext.get( strategy ),
-                                                                     context,
-                                                                     variables.get(key) ) ) );
+                       .setValue(strategy.marshalToJson( variables.get(key) ));
 
             }
-
-
-
             vcbuilder.addVariable(builder.build());
         }
 
@@ -248,25 +235,41 @@ public class ProtobufProcessMarshaller
             return null;
         }
         ObjectMarshallingStrategy strategy = context.usedStrategies.get( _variable.getStrategyIndex() );
-        Object value = strategy.unmarshal( _variable.getDataType(), 
-                                           context.strategyContexts.get( strategy ),
-                                           context,
-                                           _variable.getValue().toByteArray(),
-                                           (context.kBase == null)?null:context.kBase.getRootClassLoader() );
+        Object value  = strategy.unmarshlFromJson( _variable.getDataType(),   _variable.getValue().toString());
         return value;
     }
 
-	public static Map<String, Object> unmarshallVariableContainerValue(MarshallerReaderContext context, JBPMMessages.VariableContainer _variableContiner)
-			throws IOException, ClassNotFoundException {
+    public static String marshallVariableToJson(MarshallerWriteContext context,
+            String name,
+            Object value) throws IOException {
+       	String json ="";
+		if(value != null){
+		ObjectMarshallingStrategy strategy = context.objectMarshallingStrategyStore.getStrategyObject( value );
+		json = strategy. marshalToJson(value);
+		}
+		return json;
+    }
+    
+	public static Object unmarshallVariableValueFromJson(String datatype, String json, MarshallerReaderContext context,
+			JBPMMessages.Variable _variable) throws IOException, ClassNotFoundException {
+		if (json == null || json.isEmpty()) {
+			return null;
+		}
+		ObjectMarshallingStrategy strategy = context.usedStrategies.get(_variable.getStrategyIndex());
+		Object value = strategy.unmarshlFromJson(json, datatype);
+		return value;
+	}
+	
+	public static Map<String, Object> unmarshallVariableContainerValue(MarshallerReaderContext context,
+			JBPMMessages.VariableContainer _variableContiner) throws IOException, ClassNotFoundException {
 		Map<String, Object> variables = new HashMap<String, Object>();
 		if (_variableContiner.getVariableCount() == 0) {
 			return variables;
 		}
-
+	
 		for (Variable _variable : _variableContiner.getVariableList()) {
-
+	
 			Object value = ProtobufProcessMarshaller.unmarshallVariableValue(context, _variable);
-
 			variables.put(_variable.getName(), value);
 		}
 		return variables;
@@ -305,5 +308,4 @@ public class ProtobufProcessMarshaller
             throw new IllegalArgumentException( "ClassNotFoundException while fetching work item instance : " + e.getMessage(), e );
         }
     }
-
 }
