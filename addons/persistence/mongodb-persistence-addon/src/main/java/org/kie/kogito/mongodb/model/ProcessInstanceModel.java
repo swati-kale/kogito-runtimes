@@ -19,64 +19,59 @@ import org.bson.Document;
 import org.bson.codecs.pojo.annotations.BsonProperty;
 
 public class ProcessInstanceModel {
-	@BsonProperty("id")
-	private String id;
 
-	private String pid;
-	private Document processInstance;
-	private byte[] content;
-	private Document header;
+    @BsonProperty("id")
+    private String id;
 
-	public ProcessInstanceModel() {
+    @BsonProperty("processInstance")
+    private Document processInstance;
+    @BsonProperty("content")
+    private byte[] content;
+    @BsonProperty("header")
+    private Document header;
 
-	}
+    public ProcessInstanceModel() {
 
-	public void setId(String id) {
-		this.id = id;
-	}
+    }
 
-	public String getId() {
-		return id;
-	}
+    public void setId(String id) {
+        this.id = id;
+    }
 
-	public String getPid() {
-		return pid;
-	}
+    public String getId() {
+        return id;
+    }
 
-	public void setPid(String pid) {
-		this.pid = pid;
-	}
+    public Document getProcessInstance() {
+        return processInstance;
+    }
 
-	public Document getProcessInstance() {
-		return processInstance;
-	}
+    public void setProcessInstance(Document processInstance) {
+        this.processInstance = processInstance;
+    }
 
-	public void setProcessInstance(Document processInstance) {
-		this.processInstance = processInstance;
-	}
+    public byte[] getContent() {
+        return content;
+    }
 
-	public byte[] getContent() {
-		return content;
-	}
+    public void setContent(byte[] content) {
+        this.content = content;
+    }
 
-	public void setContent(byte[] content) {
-		this.content = content;
-	}
+    public Document getHeader() {
+        return header;
+    }
 
-	public Document getHeader() {
-		return header;
-	}
+    public void setHeader(Document header) {
+        this.header = header;
+    }
 
-	public void setHeader(Document header) {
-		this.header = header;
-	}
-
-	public ProcessInstanceModel(String id, String pid, byte[] content, Document doc, Document header) {
-		super();
-		this.id = id;
-		this.pid = pid;
-		this.content = content;
-		this.processInstance = doc;
-		this.header = header;
-	}
+    public ProcessInstanceModel(String id, byte[] content, Document doc, Document header) {
+        super();
+        this.id = id;
+        //this.pid = pid;
+        this.content = content;
+        processInstance = doc;
+        this.header = header;
+    }
 }

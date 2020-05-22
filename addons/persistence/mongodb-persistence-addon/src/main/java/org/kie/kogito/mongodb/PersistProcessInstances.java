@@ -20,6 +20,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.model.Filters;
 import org.jbpm.marshalling.impl.ProcessInstanceDocument;
 import org.kie.kogito.mongodb.model.ProcessInstanceModel;
 import org.kie.kogito.mongodb.utils.CommonUtils;
@@ -31,126 +36,116 @@ import org.kie.kogito.process.impl.marshalling.ProcessInstanceMarshaller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
-import com.mongodb.client.model.Filters;
+@SuppressWarnings({"rawtypes"})
+public class PersistProcessInstances<T> implements MutableProcessInstances<T> {
 
-@SuppressWarnings({ "rawtypes" })
-public class PersistProcessInstances implements MutableProcessInstances {
-	private static final Logger LOGGER = LoggerFactory.getLogger(PersistProcessInstances.class);
-	private org.kie.kogito.process.Process<?> process;
-   	private final MongoCollection<ProcessInstanceModel> collection;
-	private ProcessInstanceMarshaller marshaller;
-	
-	public PersistProcessInstances(MongoClient mongoClient, org.kie.kogito.process.Process<?> process) {
-		this.process = process;
-		this.collection  = CommonUtils.getCollection(mongoClient, process.id()) ;
-        this.marshaller = new ProcessInstanceMarshaller(new DocumentMarshallingStrategy());
-	}
+    private static final Logger LOGGER = LoggerFactory.getLogger(PersistProcessInstances.class);
+    private org.kie.kogito.process.Process<?> process;
+    private final MongoCollection<ProcessInstanceModel> collection;
+    private ProcessInstanceMarshaller marshaller;
 
-	@Override
-	public Optional findById(String id) {
-		ProcessInstanceModel processDoc = this.collection.find(Filters.eq("pid", resolveId(id))).first();
-		if(processDoc==null) {
-			 return Optional.empty();
-		}
-		ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(processDoc);
-		return(Optional<? extends ProcessInstance>) Optional
-					.of(marshaller.unmarshallProcessInstanceDocument(pidata, process));
-	}	
-	
-	@Override
-	public Collection values() {
-		List<ProcessInstance> list = new ArrayList<>();
-		FindIterable<ProcessInstanceModel> fi = this.collection.find();
-		MongoCursor<ProcessInstanceModel> cursor = fi.iterator();
-		try {
-			while (cursor.hasNext()) {
-				Optional opt;
-				ProcessInstanceModel processDoc = cursor.next();
-				ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(processDoc);
-				opt = (Optional<? extends ProcessInstance>) Optional
-						.of(marshaller.unmarshallProcessInstanceDocument(pidata, process));
-				if (opt.get() instanceof ProcessInstance) {
-					ProcessInstance<?> pi = (ProcessInstance) opt.get();
-					list.add(pi);
-				}
-			}
-		} finally {
-			cursor.close();
-		}
-		return list;
-		
-	}
+    public PersistProcessInstances(MongoClient mongoClient, org.kie.kogito.process.Process<?> process) {
+        this.process = process;
+        collection = CommonUtils.getCollection(mongoClient, process.id());
+        marshaller = new ProcessInstanceMarshaller(new DocumentMarshallingStrategy());
+    }
 
-	@Override
-	public void create(String id, ProcessInstance instance) {
-		updateStorage(id, instance, true);
-	}
+    @Override
+    public Optional<? extends ProcessInstance<T>> findById(String id) {
+        ProcessInstanceModel processDoc = collection.find(Filters.eq("id", resolveId(id))).first();
+        if (processDoc == null) {
+            return Optional.empty();
+        }
+        ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(processDoc);
+        return Optional
+                       .of(marshaller.unmarshalProcessInstanceDocument(pidata, process));
+    }
 
-	@Override
-	public void update(String id, ProcessInstance instance) {
-		updateStorage(id, instance, false);
-	}
-	
-	@SuppressWarnings("unchecked")
-	protected void updateStorage(String id, ProcessInstance instance, boolean checkDuplicates) {
+    @Override
+    public Collection<? extends ProcessInstance<T>> values() {
+        List<ProcessInstance<T>> list = new ArrayList<>();
+        FindIterable<ProcessInstanceModel> fi = collection.find();
+        MongoCursor<ProcessInstanceModel> cursor = fi.iterator();
+        try {
+            while (cursor.hasNext()) {
+                Optional<? extends ProcessInstance<T>> opt;
+                ProcessInstanceModel processDoc = cursor.next();
+                ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(processDoc);
+                opt = Optional
+                              .of(marshaller.unmarshalProcessInstanceDocument(pidata, process));
+                if (opt.get() instanceof ProcessInstance) {
+                    ProcessInstance<T> pi = opt.get();
+                    list.add(pi);
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return list;
+    }
 
-		String resolvedId = resolveId(id);
-		if (isActive(instance)) {
-			ProcessInstanceDocument data = (ProcessInstanceDocument) marshaller
-					.marhsallProcessInstanceForDocument(instance);
-			data.setPid(resolvedId);
-			if (checkDuplicates) { 
-				ProcessInstanceModel existing = this.collection.find(Filters.eq("pid", resolvedId)).first();
-				if (existing != null) {
-					throw new ProcessInstanceDuplicatedException(id);
-				} else {
-					ProcessInstanceModel doc = CommonUtils.convertProcessInstanceDoument(data);
-					this.collection.insertOne(doc);
-				}
-			} else {
-				ProcessInstanceModel doc = CommonUtils.convertProcessInstanceDoument(data);
-				this.collection.replaceOne(Filters.eq("pid", resolvedId), doc);
-			}
-		}
-		reloadProcessInstance(instance, resolvedId);
-	}
+    @SuppressWarnings("unchecked")
+    @Override
+    public void create(String id, ProcessInstance instance) {
+        updateStorage(id, instance, true);
+    }
 
-	@Override
-	public boolean exists(String id) {
-		String resolvedId = resolveId(id);
-		ProcessInstanceModel existing = this.collection.find(Filters.eq("pid", resolvedId)).first();
-		if (existing != null) {
-			return true;
-		}
-		return false;
-	}
-	
-	@Override
-	public void remove(String id) {
-		String resolvedId = resolveId(id);
-		this.collection.deleteOne(Filters.eq("pid", resolvedId));
+    @SuppressWarnings("unchecked")
+    @Override
+    public void update(String id, ProcessInstance instance) {
+        updateStorage(id, instance, false);
+    }
 
-	}
+    protected void updateStorage(String id, ProcessInstance<T> instance, boolean checkDuplicates) {
 
-	private void reloadProcessInstance(ProcessInstance instance, String resolvedId) {
-		 ((AbstractProcessInstance<?>) instance).internalRemoveProcessInstance(() -> {
-			try {
-				ProcessInstanceModel reloaded = this.collection.find(Filters.eq("pid", resolvedId)).first();
-				if (reloaded != null) {
-					ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(reloaded);
-					return ((AbstractProcessInstance<?>) marshaller.unmarshallProcessInstanceDocument(pidata, process,
-							(AbstractProcessInstance<?>) instance)).internalGetProcessInstance();
-				}
-			} catch (RuntimeException e) {
-				LOGGER.error("Unexpected exception thrown when reloading process instance {}", instance.id(), e);
-				return null;
-			}
-			return null;
+        String resolvedId = resolveId(id);
+        if (isActive(instance)) {
+            ProcessInstanceDocument data = marshaller
+                                                     .marhsalProcessInstanceForDocument(instance);
+            data.setId(resolvedId);
+            if (checkDuplicates) {
+                ProcessInstanceModel existing = collection.find(Filters.eq("id", resolvedId)).first();
+                if (existing != null) {
+                    throw new ProcessInstanceDuplicatedException(id);
+                } else {
+                    ProcessInstanceModel doc = CommonUtils.convertProcessInstanceDoument(data);
+                    collection.insertOne(doc);
+                }
+            } else {
+                ProcessInstanceModel doc = CommonUtils.convertProcessInstanceDoument(data);
+                collection.replaceOne(Filters.eq("id", resolvedId), doc);
+            }
+        }
+        reloadProcessInstance(instance, resolvedId);
+    }
 
-		});
-	}
+    @Override
+    public boolean exists(String id) {
+        String resolvedId = resolveId(id);
+        ProcessInstanceModel existing = collection.find(Filters.eq("id", resolvedId)).first();
+        return existing != null;
+    }
+
+    @Override
+    public void remove(String id) {
+        String resolvedId = resolveId(id);
+        collection.deleteOne(Filters.eq("id", resolvedId));
+    }
+
+    private void reloadProcessInstance(ProcessInstance<T> instance, String resolvedId) {
+        ((AbstractProcessInstance<?>) instance).internalRemoveProcessInstance(() -> {
+            try {
+                ProcessInstanceModel reloaded = collection.find(Filters.eq("id", resolvedId)).first();
+                if (reloaded != null) {
+                    ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(reloaded);
+                    return ((AbstractProcessInstance<?>) marshaller.unmarshalProcessInstanceDocument(pidata, process,
+                                                                                                     (AbstractProcessInstance<?>) instance)).internalGetProcessInstance();
+                }
+            } catch (RuntimeException e) {
+                LOGGER.error("Unexpected exception thrown when reloading process instance {}", instance.id(), e);
+                return null;
+            }
+            return null;
+        });
+    }
 }

@@ -87,8 +87,7 @@ public interface ObjectMarshallingStrategy {
         public void write(ObjectOutputStream oos) throws IOException;
     }
 
-	public String marshalToJson(Object value);
-	
-	public Object unmarshlFromJson(String dataType, String json);
+    String marshalToJson(Object value);
 
+    Object unmarshalFromJson(String dataType, String json);
 }

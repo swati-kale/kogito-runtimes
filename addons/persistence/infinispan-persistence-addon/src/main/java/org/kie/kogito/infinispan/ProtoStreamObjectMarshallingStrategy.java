@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.infinispan.protostream.BaseMarshaller;
 import org.infinispan.protostream.FileDescriptorSource;
 import org.infinispan.protostream.MessageMarshaller;
@@ -24,9 +26,6 @@ import org.kie.kogito.infinispan.marshallers.LongMessageMarshaller;
 import org.kie.kogito.infinispan.marshallers.StringMessageMarshaller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 public class ProtoStreamObjectMarshallingStrategy implements ObjectMarshallingStrategy {
@@ -98,26 +97,22 @@ public class ProtoStreamObjectMarshallingStrategy implements ObjectMarshallingSt
     }
     
     @Override
-	 public String marshalToJson(Object object) {
-		String json = null;
-		try {
-			json = MAPPER.writeValueAsString(object);
-		} catch (JsonProcessingException e) {
-			 LOGGER.error("Error while writing object as json", e);
-		}
-		return json;
-  	 
-   }
+    public String marshalToJson(Object object) {
+        try {
+            return MAPPER.writeValueAsString(object);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("JsonProcessingException writing object as json : " + e.getMessage(), e);
+        }
+    }
 
-	@Override
-	public Object unmarshlFromJson(String dataType, String json) {
-		try {
-			return MAPPER.readValue(json, serializationContext.getMarshaller(dataType).getJavaClass());
-		} catch (JsonProcessingException e) {
-			 LOGGER.error("Error while reading object from json", e);
-		}
-		return null;
-	}
+    @Override
+    public Object unmarshalFromJson(String dataType, String json) {
+        try {
+            return MAPPER.readValue(json, serializationContext.getMarshaller(dataType).getJavaClass());
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("JsonProcessingException while reading object fom json : " + e.getMessage(), e);
+        }
+    }
 
     /*
      * Not used methods

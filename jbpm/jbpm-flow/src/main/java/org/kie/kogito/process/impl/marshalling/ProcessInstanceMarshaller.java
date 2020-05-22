@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.util.Collections;
 
+import com.google.protobuf.util.JsonFormat;
 import org.drools.core.impl.EnvironmentImpl;
 import org.drools.core.marshalling.impl.ClassObjectMarshallingStrategyAcceptor;
 import org.drools.core.marshalling.impl.MarshallerReaderContext;
@@ -41,10 +42,9 @@ import org.kie.api.runtime.EnvironmentName;
 import org.kie.kogito.Model;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
+import org.kie.kogito.process.ProcessInstanceMarshallingException;
 import org.kie.kogito.process.impl.AbstractProcess;
 import org.kie.kogito.process.impl.AbstractProcessInstance;
-
-import com.google.protobuf.util.JsonFormat;
 
 public class ProcessInstanceMarshaller {
     
@@ -138,91 +138,75 @@ public class ProcessInstanceMarshaller {
         }
     }
     
-	public ProcessInstanceDocument marhsallProcessInstanceForDocument(ProcessInstance processInstance) {
+    public ProcessInstanceDocument marhsalProcessInstanceForDocument(ProcessInstance<?> processInstance) {
+        
+        org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = ((AbstractProcessInstance<?>) processInstance)
+                                                                                                                          .internalGetProcessInstance();
 
-		org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = ((AbstractProcessInstance<?>) processInstance)
-				.internalGetProcessInstance();
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext(baos, null, null, null, null,
+                                                                                      env);
+            context.setProcessInstanceId(legacyProcessInstance.getId());
+            context.setState(legacyProcessInstance.getState());
+            String processType = legacyProcessInstance.getProcess().getType();
+            context.stream.writeUTF(processType);
+            org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE
+                                                                                                               .getMarshaller(processType);
+            Object result = marshaller.writeProcessInstance(context, legacyProcessInstance);
+            ProcessInstanceDocument document = new ProcessInstanceDocument();
+            String json = "";
+            {
+                if (marshaller instanceof ProtobufRuleFlowProcessInstanceMarshaller && result != null) {
+                    JBPMMessages.ProcessInstance _instance = (JBPMMessages.ProcessInstance) result;
+                    json = JsonFormat.printer().print(_instance);
+                    document.setLegacyPIJson(json);
+                }
+            }
+            ProtobufMessages.Header _header = PersisterHelper.writeToStreamWithHeaderContent(context);
+            json = JsonFormat.printer().print(_header);
+            document.setHeader(json);
+            context.close();
+            document.setContent(baos.toByteArray());
+            ((WorkflowProcessInstanceImpl) legacyProcessInstance).disconnect();
+            return document;
+        } catch (Exception e) {
+            throw new ProcessInstanceMarshallingException(processInstance.id(), e, "Error while marshalling process instance with id : ");
+        }
+    }
 
-		try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+    public <T> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceDocument processDoc,
+                                                                   Process<?> process) {
+        Model m = (Model) process.createModel();
+        AbstractProcessInstance<?> processInstance = (AbstractProcessInstance<?>) process.createInstance(m);
+        return unmarshalProcessInstanceDocument(processDoc, process, processInstance);
+    }
 
-			ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext(baos, null, null, null, null,
-					this.env);
-			context.setProcessInstanceId(legacyProcessInstance.getId());
-			context.setState(legacyProcessInstance.getState());
-
-			String processType = ((ProcessInstanceImpl) legacyProcessInstance).getProcess().getType();
-			context.stream.writeUTF(processType);
-
-			org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE
-					.getMarshaller(processType);
-
-			Object result = marshaller.writeProcessInstance(context, legacyProcessInstance);
-			ProcessInstanceDocument document = new ProcessInstanceDocument();
-			String json = "";
-			{
-				if (marshaller instanceof ProtobufRuleFlowProcessInstanceMarshaller && result != null) {
-					JBPMMessages.ProcessInstance _instance = (JBPMMessages.ProcessInstance) result;
-					json = JsonFormat.printer().print(_instance);
-					document.setLegacyPIJson(json);
-
-				}
-			}
-
-			ProtobufMessages.Header _header = PersisterHelper.writeToStreamWithHeaderContent(context);
-			json = JsonFormat.printer().print(_header);
-
-			document.setHeader(json);
-
-			context.close();
-
-			document.setContent(baos.toByteArray());
-			((WorkflowProcessInstanceImpl) legacyProcessInstance).disconnect();
-			return document;
-		} catch (Exception e) {
-			throw new RuntimeException("Error while marshalling process instance", e);
-		}
-	}
-
-	public ProcessInstance<?> unmarshallProcessInstanceDocument(ProcessInstanceDocument processDoc,
-			Process<?> process) {
-		Model m = (Model) process.createModel();
-		AbstractProcessInstance<?> processInstance = (AbstractProcessInstance<?>) process.createInstance(m);
-		return unmarshallProcessInstanceDocument(processDoc, process, processInstance);
-	}
-	
-	public ProcessInstance<?> unmarshallProcessInstanceDocument(ProcessInstanceDocument processDoc,
-			Process<?> process, AbstractProcessInstance<?> processInstance) {
-		org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = null;
-		try (ByteArrayInputStream bais = new ByteArrayInputStream(processDoc.getContent())) {
-			MarshallerReaderContext context = new MarshallerReaderContext(bais,
-					Collections.singletonMap(process.id(), ((AbstractProcess<?>) process).legacyProcess()), null, null,
-					null, this.env);
-
-			JsonFormat.Parser parser = JsonFormat.parser();
-			JBPMMessages.ProcessInstance.Builder builder = JBPMMessages.ProcessInstance.newBuilder();
-			parser.merge(processDoc.getLegacyPIJson(), builder);
-
-			// now you can build an instance of your protobufs class which has been populated from the retrieved JSON
-
-			JBPMMessages.ProcessInstance _instance = builder.build();
-			context.parameterObject = _instance;
-
-			org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE
-					.getMarshaller(RuleFlowProcess.RULEFLOW_TYPE);
-
-			Builder buildr = ProtobufMessages.Header.newBuilder();
-			parser.merge(processDoc.getHeader(), buildr);
-			PersisterHelper.loadContext(context, buildr.build());
-
-			legacyProcessInstance = marshaller.readProcessInstance(context);
-
-			context.close();
-
-			processInstance.internalSetProcessInstance(legacyProcessInstance);
-			return processInstance;
-		} catch (Exception e) {
-			System.out.println(e);
-			throw new RuntimeException("Error while unmarshalling process instance", e);
-		}
-	}
+    @SuppressWarnings("unchecked")
+    public <T> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceDocument processDoc,
+                                                                   Process<?> process,
+                                                                   AbstractProcessInstance<?> processInstance) {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(processDoc.getContent())) {
+            org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = null;
+            MarshallerReaderContext context = new MarshallerReaderContext(bais,
+                                                                          Collections.singletonMap(process.id(), ((AbstractProcess<?>) process).legacyProcess()), null, null,
+                                                                          null, env);
+            JsonFormat.Parser parser = JsonFormat.parser();
+            JBPMMessages.ProcessInstance.Builder builder = JBPMMessages.ProcessInstance.newBuilder();
+            parser.merge(processDoc.getLegacyPIJson(), builder);
+            // now you can build an instance of your protobufs class which has been populated from the retrieved JSON
+            JBPMMessages.ProcessInstance _instance = builder.build();
+            context.parameterObject = _instance;
+            org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE
+                                                                                                               .getMarshaller(RuleFlowProcess.RULEFLOW_TYPE);
+            Builder buildr = ProtobufMessages.Header.newBuilder();
+            parser.merge(processDoc.getHeader(), buildr);
+            PersisterHelper.loadContext(context, buildr.build());
+            legacyProcessInstance = marshaller.readProcessInstance(context);
+            context.close();
+            processInstance.internalSetProcessInstance(legacyProcessInstance);
+            return (ProcessInstance<T>) processInstance;
+        } catch (Exception e) {
+            throw new ProcessInstanceMarshallingException(processInstance.id(), e, "Error while unmarshalling process instance with id : ");
+        }
+    }
 }

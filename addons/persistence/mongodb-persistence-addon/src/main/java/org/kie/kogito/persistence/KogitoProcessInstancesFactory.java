@@ -15,11 +15,10 @@
 
 package org.kie.kogito.persistence;
 
+import com.mongodb.client.MongoClient;
 import org.kie.kogito.mongodb.PersistProcessInstances;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstancesFactory;
-
-import com.mongodb.client.MongoClient;
 
 /**
  * This class must always have exact FQCN as
@@ -28,15 +27,14 @@ import com.mongodb.client.MongoClient;
  */
 public abstract class KogitoProcessInstancesFactory implements ProcessInstancesFactory {
 
-	protected MongoClient mongoClient;
+    protected MongoClient mongoClient;
 
-	public KogitoProcessInstancesFactory(MongoClient mongoClient) {
+    public KogitoProcessInstancesFactory(MongoClient mongoClient) {
+        this.mongoClient = mongoClient;
+    }
 
-		this.mongoClient = mongoClient;
-	}
-
-	public PersistProcessInstances createProcessInstances(Process<?> process) {
-		return new PersistProcessInstances(this.mongoClient, process);
-	}
-
+    @Override
+    public PersistProcessInstances createProcessInstances(Process<?> process) {
+        return new PersistProcessInstances(mongoClient, process);
+    }
 }

@@ -16,44 +16,46 @@
 package org.jbpm.marshalling.impl;
 
 public class ProcessInstanceDocument {
-	private String id;
-	private String pid;
-	private String legacyPIJson;
-	 private byte[] content;
-	  private String header;
-	  
-	public ProcessInstanceDocument() {
-		
-	}
-	public String getId() {
-		return id;
-	}
-	public void setId(String id) {
-		this.id = id;
-	}
-	public String getPid() {
-		return pid;
-	}
-	public void setPid(String pid) {
-		this.pid = pid;
-	}
-	public String getLegacyPIJson() {
-		return legacyPIJson;
-	}
-	public void setLegacyPIJson(String legacyPIJson) {
-		this.legacyPIJson = legacyPIJson;
-	}
-	public byte[] getContent() {
-		return content;
-	}
-	public void setContent(byte[] content) {
-		this.content = content;
-	}
-	public String getHeader() {
-		return header;
-	}
-	public void setHeader(String header) {
-		this.header = header;
-	}
+
+    private String id;
+    private String legacyPIJson;
+    private byte[] content;
+    private String header;
+
+    public ProcessInstanceDocument() {
+
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getLegacyPIJson() {
+        return legacyPIJson;
+    }
+
+    public void setLegacyPIJson(String legacyPIJson) {
+        this.legacyPIJson = legacyPIJson;
+    }
+
+    public byte[] getContent() {
+        return content;
+    }
+
+    public void setContent(byte[] content) {
+        this.content = content;
+    }
+
+    public String getHeader() {
+        return header;
+    }
+
+    public void setHeader(String header) {
+        this.header = header;
+    }
 
 }

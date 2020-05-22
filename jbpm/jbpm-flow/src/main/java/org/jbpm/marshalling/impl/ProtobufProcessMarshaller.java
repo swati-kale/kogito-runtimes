@@ -235,7 +235,7 @@ public class ProtobufProcessMarshaller
             return null;
         }
         ObjectMarshallingStrategy strategy = context.usedStrategies.get( _variable.getStrategyIndex() );
-        Object value  = strategy.unmarshlFromJson( _variable.getDataType(),   _variable.getValue().toString());
+        Object value  = strategy.unmarshalFromJson( _variable.getDataType(),   _variable.getValue().toString());
         return value;
     }
 
@@ -256,7 +256,7 @@ public class ProtobufProcessMarshaller
 			return null;
 		}
 		ObjectMarshallingStrategy strategy = context.usedStrategies.get(_variable.getStrategyIndex());
-		Object value = strategy.unmarshlFromJson(json, datatype);
+		Object value = strategy.unmarshalFromJson(json, datatype);
 		return value;
 	}
 	

@@ -15,12 +15,10 @@
 
 package org.kie.kogito.mongodb;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.kie.api.runtime.process.ProcessInstance.STATE_ACTIVE;
-import static org.kie.api.runtime.process.ProcessInstance.STATE_COMPLETED;
-
 import java.util.Collections;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import org.drools.core.io.impl.ClassPathResource;
 import org.junit.jupiter.api.Test;
 import org.kie.kogito.auth.SecurityPolicy;
@@ -31,45 +29,48 @@ import org.kie.kogito.process.bpmn2.BpmnProcess;
 import org.kie.kogito.process.bpmn2.BpmnVariables;
 import org.kie.kogito.services.identity.StaticIdentityProvider;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.kie.api.runtime.process.ProcessInstance.STATE_ACTIVE;
+import static org.kie.api.runtime.process.ProcessInstance.STATE_COMPLETED;
 
 class PersistProcessInstanceTest {
-	private MongoClient mongoClient = MongoClients.create();
-	private SecurityPolicy securityPolicy = SecurityPolicy.of(new StaticIdentityProvider("john"));
-	@Test
-	void test() {
 
-		BpmnProcess process = (BpmnProcess) BpmnProcess.from(new ClassPathResource("BPMN2-UserTask.bpmn2"))
-				.get(0);
-		process.setProcessInstancesFactory(new PersistProcessInstancesFactory(mongoClient));
-		process.configure();
-		ProcessInstance<BpmnVariables> processInstance = process
-				.createInstance(BpmnVariables.create(Collections.singletonMap("test", "test")));
+    private MongoClient mongoClient = MongoClients.create();
+    private SecurityPolicy securityPolicy = SecurityPolicy.of(new StaticIdentityProvider("john"));
 
-		processInstance.start();
-		assertThat(processInstance.status()).isEqualTo(STATE_ACTIVE);
-		assertThat(processInstance.description()).isEqualTo("User Task");
+    @Test
+    void test() {
 
-		assertThat(process.instances().values()).hasSize(1);
+        BpmnProcess process = BpmnProcess.from(new ClassPathResource("BPMN2-UserTask.bpmn2"))
+                                         .get(0);
+        process.setProcessInstancesFactory(new PersistProcessInstancesFactory(mongoClient));
+        process.configure();
+        ProcessInstance<BpmnVariables> processInstance = process
+                                                                .createInstance(BpmnVariables.create(Collections.singletonMap("test", "test")));
 
-		String testVar = (String) processInstance.variables().get("test");
-		assertThat(testVar).isEqualTo("test");
+        processInstance.start();
+        assertThat(processInstance.status()).isEqualTo(STATE_ACTIVE);
+        assertThat(processInstance.description()).isEqualTo("User Task");
 
-		assertThat(processInstance.description()).isEqualTo("User Task");
+        assertThat(process.instances().values()).hasSize(1);
 
-		WorkItem workItem = processInstance.workItems(securityPolicy).get(0);
-		assertThat(workItem).isNotNull();
-		assertThat(workItem.getParameters().get("ActorId")).isEqualTo("john");
-		processInstance.completeWorkItem(workItem.getId(), null, securityPolicy);
-		assertThat(processInstance.status()).isEqualTo(STATE_COMPLETED);
-	}
+        String testVar = (String) processInstance.variables().get("test");
+        assertThat(testVar).isEqualTo("test");
 
-	private class PersistProcessInstancesFactory extends KogitoProcessInstancesFactory {
+        assertThat(processInstance.description()).isEqualTo("User Task");
 
-		public PersistProcessInstancesFactory(MongoClient mongoClient) {
-			super(mongoClient);
+        WorkItem workItem = processInstance.workItems(securityPolicy).get(0);
+        assertThat(workItem).isNotNull();
+        assertThat(workItem.getParameters().get("ActorId")).isEqualTo("john");
+        processInstance.completeWorkItem(workItem.getId(), null, securityPolicy);
+        assertThat(processInstance.status()).isEqualTo(STATE_COMPLETED);
+    }
 
-		}
-	}
+    private class PersistProcessInstancesFactory extends KogitoProcessInstancesFactory {
+
+        public PersistProcessInstancesFactory(MongoClient mongoClient) {
+            super(mongoClient);
+
+        }
+    }
 }
