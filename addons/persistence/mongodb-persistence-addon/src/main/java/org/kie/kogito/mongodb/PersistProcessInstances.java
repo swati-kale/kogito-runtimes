@@ -26,6 +26,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Filters;
 import org.jbpm.marshalling.impl.ProcessInstanceDocument;
+import org.kie.kogito.Model;
 import org.kie.kogito.mongodb.model.ProcessInstanceModel;
 import org.kie.kogito.mongodb.utils.CommonUtils;
 import org.kie.kogito.process.MutableProcessInstances;
@@ -36,8 +37,7 @@ import org.kie.kogito.process.impl.marshalling.ProcessInstanceMarshaller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings({"rawtypes"})
-public class PersistProcessInstances<T> implements MutableProcessInstances<T> {
+public class PersistProcessInstances<T extends Model> implements MutableProcessInstances<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PersistProcessInstances.class);
     private org.kie.kogito.process.Process<?> process;
@@ -58,41 +58,31 @@ public class PersistProcessInstances<T> implements MutableProcessInstances<T> {
         }
         ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(processDoc);
         return Optional
-                       .of(marshaller.unmarshalProcessInstanceDocument(pidata, process));
+                .of(marshaller.unmarshalProcessInstanceDocument(pidata, process));
     }
 
     @Override
     public Collection<? extends ProcessInstance<T>> values() {
         List<ProcessInstance<T>> list = new ArrayList<>();
         FindIterable<ProcessInstanceModel> fi = collection.find();
-        MongoCursor<ProcessInstanceModel> cursor = fi.iterator();
-        try {
+        try (MongoCursor<ProcessInstanceModel> cursor = fi.iterator()) {
             while (cursor.hasNext()) {
-                Optional<? extends ProcessInstance<T>> opt;
                 ProcessInstanceModel processDoc = cursor.next();
                 ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(processDoc);
-                opt = Optional
-                              .of(marshaller.unmarshalProcessInstanceDocument(pidata, process));
-                if (opt.get() instanceof ProcessInstance) {
-                    ProcessInstance<T> pi = opt.get();
-                    list.add(pi);
-                }
+                Optional<? extends ProcessInstance<T>> opt = Optional.of(marshaller.unmarshalProcessInstanceDocument(pidata, process));
+                list.add(opt.get());
             }
-        } finally {
-            cursor.close();
         }
         return list;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public void create(String id, ProcessInstance instance) {
+    public void create(String id, ProcessInstance<T> instance) {
         updateStorage(id, instance, true);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public void update(String id, ProcessInstance instance) {
+    public void update(String id, ProcessInstance<T> instance) {
         updateStorage(id, instance, false);
     }
 
@@ -101,7 +91,7 @@ public class PersistProcessInstances<T> implements MutableProcessInstances<T> {
         String resolvedId = resolveId(id);
         if (isActive(instance)) {
             ProcessInstanceDocument data = marshaller
-                                                     .marhsalProcessInstanceForDocument(instance);
+                    .marhsalProcessInstanceForDocument(instance);
             data.setId(resolvedId);
             if (checkDuplicates) {
                 ProcessInstanceModel existing = collection.find(Filters.eq("id", resolvedId)).first();
@@ -138,12 +128,11 @@ public class PersistProcessInstances<T> implements MutableProcessInstances<T> {
                 ProcessInstanceModel reloaded = collection.find(Filters.eq("id", resolvedId)).first();
                 if (reloaded != null) {
                     ProcessInstanceDocument pidata = CommonUtils.convertProcessInstance(reloaded);
-                    return ((AbstractProcessInstance<?>) marshaller.unmarshalProcessInstanceDocument(pidata, process,
-                                                                                                     (AbstractProcessInstance<?>) instance)).internalGetProcessInstance();
+                    return ((AbstractProcessInstance<T>) marshaller.unmarshalProcessInstanceDocument(pidata, process,
+                            (AbstractProcessInstance<T>) instance)).internalGetProcessInstance();
                 }
             } catch (RuntimeException e) {
                 LOGGER.error("Unexpected exception thrown when reloading process instance {}", instance.id(), e);
-                return null;
             }
             return null;
         });

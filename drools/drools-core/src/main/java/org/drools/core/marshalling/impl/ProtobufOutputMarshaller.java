@@ -373,12 +373,8 @@ public class ProtobufOutputMarshaller {
 
     private static ByteString serializeObject(MarshallerWriteContext context, ObjectMarshallingStrategy strategy, Object object) {
         ObjectMarshallingStrategy.Context strategyContext = context.strategyContext.get(strategy);
-        try {
-            byte[] serialized = strategy.marshal(strategyContext, context, object);
-            return ByteString.copyFrom(serialized);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        byte[] serialized = strategy.marshal(strategyContext, context, object);
+        return ByteString.copyFrom(serialized);
     }
 
     private static ProtobufMessages.NodeMemory writeQueryElementNodeMemory(final int nodeId,

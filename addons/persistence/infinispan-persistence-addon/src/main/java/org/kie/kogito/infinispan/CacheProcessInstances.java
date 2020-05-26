@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.protostream.MessageMarshaller;
+import org.kie.kogito.Model;
 import org.kie.kogito.process.MutableProcessInstances;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
@@ -29,43 +30,42 @@ import org.kie.kogito.process.ProcessInstanceDuplicatedException;
 import org.kie.kogito.process.impl.AbstractProcessInstance;
 import org.kie.kogito.process.impl.marshalling.ProcessInstanceMarshaller;
 
-@SuppressWarnings({"rawtypes"})
-public class CacheProcessInstances implements MutableProcessInstances {
-        
+public class CacheProcessInstances<T extends Model> implements MutableProcessInstances<T> {
+
     private final RemoteCache<String, byte[]> cache;
     private ProcessInstanceMarshaller marshaller;
-    
-    private org.kie.kogito.process.Process<?> process;
-    
-    public CacheProcessInstances(Process<?> process, RemoteCacheManager cacheManager, String templateName, String proto, MessageMarshaller<?>...marshallers) {
-        this.process = process;    
+
+    private org.kie.kogito.process.Process<T> process;
+
+    public CacheProcessInstances(Process<T> process, RemoteCacheManager cacheManager, String templateName, String proto, MessageMarshaller<?>... marshallers) {
+        this.process = process;
         this.cache = cacheManager.administration().getOrCreateCache(process.id() + "_store", ignoreNullOrEmpty(templateName));
-        
+
         this.marshaller = new ProcessInstanceMarshaller(new ProtoStreamObjectMarshallingStrategy(proto, marshallers));
     }
 
-    
+
     @Override
-    public Optional<? extends ProcessInstance> findById(String id) {
+    public Optional<? extends ProcessInstance<T>> findById(String id) {
         byte[] data = cache.get(resolveId(id));
         if (data == null) {
             return Optional.empty();
         }
-        
-        return (Optional<? extends ProcessInstance>) Optional.of(marshaller.unmarshallProcessInstance(data, process));
+
+        return Optional.of(marshaller.unmarshalProcessInstance(data, process));
     }
 
-    
+
     @Override
-    public Collection<? extends ProcessInstance> values() {
-        return (Collection<? extends ProcessInstance>) cache.values()
+    public Collection<? extends ProcessInstance<T>> values() {
+        return cache.values()
                 .parallelStream()
-                .map(data -> marshaller.unmarshallProcessInstance(data, process))
+                .map(data -> marshaller.unmarshalProcessInstance(data, process))
                 .collect(Collectors.toList());
     }
-    
+
     @Override
-    public void update(String id, ProcessInstance instance) {
+    public void update(String id, ProcessInstance<T> instance) {
         updateStorage(id, instance, false);
     }
 
@@ -78,23 +78,21 @@ public class CacheProcessInstances implements MutableProcessInstances {
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
-        
+
         return value;
     }
 
 
     @Override
-    public void create(String id, ProcessInstance instance) {
+    public void create(String id, ProcessInstance<T> instance) {
         updateStorage(id, instance, true);
-        
     }
-    
-    @SuppressWarnings("unchecked")
-    protected void updateStorage(String id, ProcessInstance instance, boolean checkDuplicates) {
+
+    protected void updateStorage(String id, ProcessInstance<T> instance, boolean checkDuplicates) {
         if (isActive(instance)) {
             String resolvedId = resolveId(id);
             byte[] data = marshaller.marhsallProcessInstance(instance);
-            
+
             if (checkDuplicates) {
                 byte[] existing = cache.putIfAbsent(resolvedId, data);
                 if (existing != null) {
@@ -103,13 +101,12 @@ public class CacheProcessInstances implements MutableProcessInstances {
             } else {
                 cache.put(resolvedId, data);
             }
-            
-            ((AbstractProcessInstance<?>) instance).internalRemoveProcessInstance(() -> {
+
+            ((AbstractProcessInstance<T>) instance).internalRemoveProcessInstance(() -> {
                 byte[] reloaded = cache.get(resolvedId);
                 if (reloaded != null) {
-                    return ((AbstractProcessInstance<?>)marshaller.unmarshallProcessInstance(reloaded, process, (AbstractProcessInstance<?>) instance)).internalGetProcessInstance();                    
+                    return ((AbstractProcessInstance<T>) marshaller.unmarshalProcessInstance(reloaded, process, (AbstractProcessInstance<T>) instance)).internalGetProcessInstance();
                 }
-                
                 return null;
             });
         }

@@ -83,7 +83,7 @@ public abstract class AbstractProcess<T extends Model> implements Process<T> {
 
     @Override
     public ProcessInstance<T> createInstance(Model m) {
-        return createInstance((T) m);
+        return createInstance(m);
     }
 
     @Override
@@ -147,7 +147,7 @@ public abstract class AbstractProcess<T extends Model> implements Process<T> {
     }
 
     protected ExpirationTime configureTimerInstance(Timer timer) {
-        long duration = -1;
+        long duration;
         switch (timer.getTimeType()) {
             case Timer.TIME_CYCLE:
                 // when using ISO date/time period is not set
@@ -163,16 +163,11 @@ public abstract class AbstractProcess<T extends Model> implements Process<T> {
                 } else {
                     return DurationExpirationTime.repeat(repeatValues[0], repeatValues[0], Integer.MAX_VALUE);
                 }
-
             case Timer.TIME_DURATION:
-
                 duration = DateTimeUtils.parseDuration(timer.getDelay());
                 return DurationExpirationTime.repeat(duration);
-
             case Timer.TIME_DATE:
-
                 return ExactExpirationTime.of(timer.getDate());
-
             default:
                 throw new UnsupportedOperationException("Not supported timer definition");
         }

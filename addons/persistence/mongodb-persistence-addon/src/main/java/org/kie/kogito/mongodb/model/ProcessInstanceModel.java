@@ -22,7 +22,6 @@ public class ProcessInstanceModel {
 
     @BsonProperty("id")
     private String id;
-
     @BsonProperty("processInstance")
     private Document processInstance;
     @BsonProperty("content")
@@ -31,7 +30,13 @@ public class ProcessInstanceModel {
     private Document header;
 
     public ProcessInstanceModel() {
+    }
 
+    public ProcessInstanceModel(String id, byte[] content, Document doc, Document header) {
+        this.id = id;
+        this.content = content;
+        processInstance = doc;
+        this.header = header;
     }
 
     public void setId(String id) {
@@ -66,12 +71,4 @@ public class ProcessInstanceModel {
         this.header = header;
     }
 
-    public ProcessInstanceModel(String id, byte[] content, Document doc, Document header) {
-        super();
-        this.id = id;
-        //this.pid = pid;
-        this.content = content;
-        processInstance = doc;
-        this.header = header;
-    }
 }

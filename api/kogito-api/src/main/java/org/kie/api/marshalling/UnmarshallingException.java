@@ -13,20 +13,19 @@
  * limitations under the License.
  */
 
-package org.kie.kogito.process;
+package org.kie.api.marshalling;
 
-public class ProcessInstanceMarshallingException extends RuntimeException {
+public class UnmarshallingException extends RuntimeException {
 
-    private static final long serialVersionUID = -707257541887233373L;
-    private final String processInstanceId;
-
-    public ProcessInstanceMarshallingException(String processInstanceId, Throwable cause, String msg) {
-        super(msg + processInstanceId, cause);
-        this.processInstanceId = processInstanceId;
+    public UnmarshallingException(String message) {
+        super(message);
     }
 
-    public String getProcessInstanceId() {
-        return processInstanceId;
+    public UnmarshallingException(Throwable cause) {
+        super(cause);
     }
 
+    public UnmarshallingException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

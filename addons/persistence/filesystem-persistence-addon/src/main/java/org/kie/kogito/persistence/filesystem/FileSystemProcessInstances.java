@@ -25,7 +25,9 @@ import java.nio.file.attribute.UserDefinedFileAttributeView;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.kie.kogito.Model;
 import org.kie.kogito.process.MutableProcessInstances;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
@@ -35,23 +37,22 @@ import org.kie.kogito.process.impl.marshalling.ProcessInstanceMarshaller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings({"rawtypes"})
-public class FileSystemProcessInstances implements MutableProcessInstances {
+public class FileSystemProcessInstances<T extends Model> implements MutableProcessInstances<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FileSystemProcessInstances.class);
 
     public static final String PI_DESCRIPTION = "ProcessInstanceDescription";
     public static final String PI_STATUS = "ProcessInstanceStatus";
-    private Process<?> process;
+    private Process<T> process;
     private Path storage;
 
     private ProcessInstanceMarshaller marshaller;
 
-    public FileSystemProcessInstances(Process<?> process, Path storage) {
+    public FileSystemProcessInstances(Process<T> process, Path storage) {
         this(process, storage, new ProcessInstanceMarshaller());
     }
 
-    public FileSystemProcessInstances(Process<?> process, Path storage, ProcessInstanceMarshaller marshaller) {
+    public FileSystemProcessInstances(Process<T> process, Path storage, ProcessInstanceMarshaller marshaller) {
         this.process = process;
         this.storage = Paths.get(storage.toString(), process.id());
         this.marshaller = marshaller;
@@ -64,23 +65,22 @@ public class FileSystemProcessInstances implements MutableProcessInstances {
     }
 
     @Override
-    public Optional findById(String id) {
+    public Optional<ProcessInstance<T>> findById(String id) {
         String resolvedId = resolveId(id);
         Path processInstanceStorage = Paths.get(storage.toString(), resolvedId);
 
         if (Files.notExists(processInstanceStorage)) {
             return Optional.empty();
         }
-        return (Optional<? extends ProcessInstance>) Optional.of(marshaller.unmarshallProcessInstance(readBytesFromFile(processInstanceStorage), process));
+        return Optional.of(marshaller.unmarshalProcessInstance(readBytesFromFile(processInstanceStorage), process));
 
     }
 
     @Override
-    public Collection values() {
-        try {
-            return Files.walk(storage)
-                        .filter(file -> !Files.isDirectory(file))
-                        .map(f -> marshaller.unmarshallProcessInstance(readBytesFromFile(f), process))
+    public Collection<ProcessInstance<T>> values() {
+        try (Stream<Path> files = Files.walk(storage)){
+            return files.filter(file -> !Files.isDirectory(file))
+                        .map(f -> marshaller.unmarshalProcessInstance(readBytesFromFile(f), process))
                         .collect(Collectors.toList());
         } catch (IOException e) {
             throw new RuntimeException("Unable to read process instances ", e);
@@ -92,9 +92,8 @@ public class FileSystemProcessInstances implements MutableProcessInstances {
         return Files.exists(Paths.get(storage.toString(), resolveId(id)));
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public void create(String id, ProcessInstance instance) {
+    public void create(String id, ProcessInstance<T> instance) {
         if (isActive(instance)) {
             String resolvedId = resolveId(id);
             Path processInstanceStorage = Paths.get(storage.toString(), resolvedId);
@@ -106,9 +105,8 @@ public class FileSystemProcessInstances implements MutableProcessInstances {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public void update(String id, ProcessInstance instance) {
+    public void update(String id, ProcessInstance<T> instance) {
         if (isActive(instance)) {
             String resolvedId = resolveId(id);
             Path processInstanceStorage = Paths.get(storage.toString(), resolvedId);
@@ -131,7 +129,7 @@ public class FileSystemProcessInstances implements MutableProcessInstances {
 
     }
 
-    protected void storeProcessInstance(Path processInstanceStorage, ProcessInstance<?> instance) {
+    protected void storeProcessInstance(Path processInstanceStorage, ProcessInstance<T> instance) {
         try {
             byte[] data = marshaller.marhsallProcessInstance(instance);
             Files.write(processInstanceStorage, data);
@@ -152,13 +150,13 @@ public class FileSystemProcessInstances implements MutableProcessInstances {
         }
     }
 
-    protected void disconnect(Path processInstanceStorage, ProcessInstance instance) {
+    protected void disconnect(Path processInstanceStorage, ProcessInstance<T> instance) {
         ((AbstractProcessInstance<?>) instance).internalRemoveProcessInstance(() -> {
 
             try {
                 byte[] reloaded = readBytesFromFile(processInstanceStorage);
 
-                return ((AbstractProcessInstance<?>) marshaller.unmarshallProcessInstance(reloaded, process, (AbstractProcessInstance<?>) instance)).internalGetProcessInstance();
+                return ((AbstractProcessInstance<?>) marshaller.unmarshalProcessInstance(reloaded, process, (AbstractProcessInstance<?>) instance)).internalGetProcessInstance();
             } catch (RuntimeException e) {
                 LOGGER.error("Unexpected exception thrown when reloading process instance {}", instance.id(), e);
                 return null;

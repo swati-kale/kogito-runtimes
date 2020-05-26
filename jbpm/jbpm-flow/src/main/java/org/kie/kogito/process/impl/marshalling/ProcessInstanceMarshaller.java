@@ -37,19 +37,21 @@ import org.jbpm.process.instance.impl.ProcessInstanceImpl;
 import org.jbpm.ruleflow.core.RuleFlowProcess;
 import org.jbpm.workflow.instance.impl.WorkflowProcessInstanceImpl;
 import org.kie.api.marshalling.ObjectMarshallingStrategy;
+import org.kie.api.marshalling.UnmarshallingException;
 import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.EnvironmentName;
 import org.kie.kogito.Model;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
 import org.kie.kogito.process.ProcessInstanceMarshallingException;
+import org.kie.kogito.process.ProcessInstanceUnmarshallingException;
 import org.kie.kogito.process.impl.AbstractProcess;
 import org.kie.kogito.process.impl.AbstractProcessInstance;
 
 public class ProcessInstanceMarshaller {
-    
+
     private Environment env = new EnvironmentImpl();
-    
+
     public ProcessInstanceMarshaller(ObjectMarshallingStrategy... strategies) {
         ObjectMarshallingStrategy[] strats = null;
         if ( strategies == null ) {
@@ -63,16 +65,16 @@ public class ProcessInstanceMarshaller {
             }
             strats[i] = new SerializablePlaceholderResolverStrategy( ClassObjectMarshallingStrategyAcceptor.DEFAULT  );
         }
-        
+
         env.set( EnvironmentName.OBJECT_MARSHALLING_STRATEGIES, strats );
     }
 
     public byte[] marhsallProcessInstance(ProcessInstance<?> processInstance) {
-        
+
         org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = ((AbstractProcessInstance<?>) processInstance).internalGetProcessInstance();
-        
+
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-        
+
             ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext( baos,
                                                                                    null,
                                                                                    null,
@@ -84,14 +86,14 @@ public class ProcessInstanceMarshaller {
 
             String processType = ((ProcessInstanceImpl) legacyProcessInstance).getProcess().getType();
             context.stream.writeUTF(processType);
-            
+
             org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE.getMarshaller( processType );
-            
+
             Object result = marshaller.writeProcessInstance( context,
                                                              legacyProcessInstance);
             if( marshaller instanceof ProtobufRuleFlowProcessInstanceMarshaller && result != null ) {
                 JBPMMessages.ProcessInstance _instance = (JBPMMessages.ProcessInstance)result;
-                PersisterHelper.writeToStreamWithHeader( context, 
+                PersisterHelper.writeToStreamWithHeader( context,
                                                          _instance );
             }
             context.close();
@@ -101,18 +103,15 @@ public class ProcessInstanceMarshaller {
             throw new RuntimeException("Error while marshalling process instance", e);
         }
     }
-    
-    public ProcessInstance<?> unmarshallProcessInstance(byte[] data, Process<?> process) {
-        
-        Model m = (Model) process.createModel();
-        AbstractProcessInstance<?> processInstance = (AbstractProcessInstance<?>) process.createInstance(m);
-        
-        return unmarshallProcessInstance(data, process, processInstance);
+
+    public <T extends Model> ProcessInstance<T> unmarshalProcessInstance(byte[] data, Process<T> process) throws UnmarshallingException {
+        T m = process.createModel();
+        AbstractProcessInstance<T> processInstance = (AbstractProcessInstance<T>) process.createInstance(m);
+        return unmarshalProcessInstance(data, process, processInstance);
     }
-    
-    public ProcessInstance<?> unmarshallProcessInstance(byte[] data, Process<?> process, AbstractProcessInstance<?> processInstance) {
-        
-        org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = null;
+
+    public <T extends Model> ProcessInstance<T> unmarshalProcessInstance(byte[] data, Process<?> process, AbstractProcessInstance<T> processInstance) throws UnmarshallingException {
+
         try (ByteArrayInputStream bais = new ByteArrayInputStream( data )) {
             MarshallerReaderContext context = new MarshallerReaderContext( bais,
                                                                            Collections.singletonMap(process.id(), ((AbstractProcess<?>)process).legacyProcess()),
@@ -123,23 +122,23 @@ public class ProcessInstanceMarshaller {
                                                                           );
             ObjectInputStream stream = context.stream;
             String processInstanceType = stream.readUTF();
-            
+
             org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE.getMarshaller( processInstanceType );
-            
-            legacyProcessInstance = marshaller.readProcessInstance(context);
-     
+
+            org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = marshaller.readProcessInstance(context);
+
             context.close();
 
             processInstance.internalSetProcessInstance(legacyProcessInstance);
-            
+
             return processInstance;
         } catch (Exception e) {
-            throw new RuntimeException("Error while unmarshalling process instance", e);
+            throw new ProcessInstanceUnmarshallingException("Error while unmarshalling process instance", e);
         }
     }
-    
+
     public ProcessInstanceDocument marhsalProcessInstanceForDocument(ProcessInstance<?> processInstance) {
-        
+
         org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = ((AbstractProcessInstance<?>) processInstance)
                                                                                                                           .internalGetProcessInstance();
 
@@ -174,7 +173,7 @@ public class ProcessInstanceMarshaller {
         }
     }
 
-    public <T> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceDocument processDoc,
+    public <T extends Model> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceDocument processDoc,
                                                                    Process<?> process) {
         Model m = (Model) process.createModel();
         AbstractProcessInstance<?> processInstance = (AbstractProcessInstance<?>) process.createInstance(m);
@@ -182,7 +181,7 @@ public class ProcessInstanceMarshaller {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceDocument processDoc,
+    public <T extends Model> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceDocument processDoc,
                                                                    Process<?> process,
                                                                    AbstractProcessInstance<?> processInstance) {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(processDoc.getContent())) {

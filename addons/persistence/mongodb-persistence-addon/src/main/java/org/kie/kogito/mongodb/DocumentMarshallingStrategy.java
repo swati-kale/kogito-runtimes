@@ -15,13 +15,13 @@
 
 package org.kie.kogito.mongodb;
 
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
+import org.kie.api.marshalling.MarshallingException;
 import org.kie.api.marshalling.ObjectMarshallingStrategy;
+import org.kie.api.marshalling.UnmarshallingException;
 import org.kie.kogito.mongodb.utils.CommonUtils;
 
 public class DocumentMarshallingStrategy implements ObjectMarshallingStrategy {
@@ -31,7 +31,7 @@ public class DocumentMarshallingStrategy implements ObjectMarshallingStrategy {
         try {
             return CommonUtils.getObjectMapper().writeValueAsString(object);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JsonProcessingException writing object as json : " + e.getMessage(), e);
+            throw new MarshallingException(e);
         }
     }
 
@@ -40,12 +40,8 @@ public class DocumentMarshallingStrategy implements ObjectMarshallingStrategy {
         try {
             Class<?> loadClass = Thread.currentThread().getContextClassLoader().loadClass(dataType);
             return CommonUtils.getObjectMapper().readValue(json, loadClass);
-        } catch (ClassNotFoundException e) {
-            throw new IllegalArgumentException("ClassNotFoundException while reading object from json : " + e.getMessage(), e);
-        } catch (JsonMappingException e) {
-            throw new IllegalArgumentException("JsonMappingException while reading object from json : " + e.getMessage(), e);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JsonProcessingException while reading object fom json : " + e.getMessage(), e);
+        } catch (ClassNotFoundException | JsonProcessingException e) {
+            throw new UnmarshallingException(e);
         }
     }
 
@@ -60,17 +56,17 @@ public class DocumentMarshallingStrategy implements ObjectMarshallingStrategy {
     }
 
     @Override
-    public void write(ObjectOutputStream os, Object object) throws IOException {
+    public void write(ObjectOutputStream os, Object object) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Object read(ObjectInputStream os) throws IOException, ClassNotFoundException {
+    public Object read(ObjectInputStream os) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public byte[] marshal(Context context, ObjectOutputStream os, Object object) throws IOException {
+    public byte[] marshal(Context context, ObjectOutputStream os, Object object) {
         throw new UnsupportedOperationException();
     }
 
@@ -79,7 +75,7 @@ public class DocumentMarshallingStrategy implements ObjectMarshallingStrategy {
                             Context context,
                             ObjectInputStream is,
                             byte[] object,
-                            ClassLoader classloader) throws IOException, ClassNotFoundException {
+                            ClassLoader classloader) {
         throw new UnsupportedOperationException();
     }
 }

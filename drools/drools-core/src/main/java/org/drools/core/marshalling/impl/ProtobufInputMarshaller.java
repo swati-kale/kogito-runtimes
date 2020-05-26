@@ -664,16 +664,11 @@ public class ProtobufInputMarshaller {
                 int i = 0;
                 for (ProtobufMessages.SerializedObject _object : _tuple.getObjectList()) {
                     ObjectMarshallingStrategy strategy = context.usedStrategies.get( _object.getStrategyIndex() );
-
-                    try {
-                        objects[i++] = strategy.unmarshal( null, 
-                                                           context.strategyContexts.get( strategy ),
-                                                           context,
-                                                           _object.getObject().toByteArray(),
-                                                           (context.kBase == null) ? null : context.kBase.getRootClassLoader() );
-                    } catch (IOException | ClassNotFoundException e) {
-                        throw new RuntimeException( e );
-                    }
+                    objects[i++] = strategy.unmarshal( null,
+                                                       context.strategyContexts.get( strategy ),
+                                                       context,
+                                                       _object.getObject().toByteArray(),
+                                                       (context.kBase == null) ? null : context.kBase.getRootClassLoader() );
                 }
                 activationKey = PersisterHelper.createActivationKey( _activation.getPackageName(), _activation.getRuleName(), objects );
 
@@ -693,8 +688,7 @@ public class ProtobufInputMarshaller {
     }
 
     public static void readTimer(MarshallerReaderContext inCtx,
-                                 Timer _timer) throws IOException,
-                                              ClassNotFoundException {
+                                 Timer _timer) throws ClassNotFoundException {
         TimersInputMarshaller reader = inCtx.readersByInt.get( _timer.getType().getNumber() );
         reader.deserialize( inCtx, _timer );
     }

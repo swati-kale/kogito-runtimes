@@ -24,17 +24,18 @@ import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.kie.api.marshalling.MarshallingException;
 import org.kie.api.marshalling.ObjectMarshallingStrategy;
 import org.kie.api.marshalling.ObjectMarshallingStrategyAcceptor;
+import org.kie.api.marshalling.UnmarshallingException;
 
 public class JavaSerializableResolverStrategy
         implements
         ObjectMarshallingStrategy {
 
     private ObjectMarshallingStrategyAcceptor acceptor;
-    private static ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     public JavaSerializableResolverStrategy(ObjectMarshallingStrategyAcceptor acceptor) {
         this.acceptor = acceptor;
     }
@@ -57,11 +58,10 @@ public class JavaSerializableResolverStrategy
                           ObjectOutputStream os,
                           Object object) {
         try (ByteArrayOutputStream bs = new ByteArrayOutputStream()) {
-            os = new ObjectOutputStream(bs);
-            write(os, object);
+            write(new ObjectOutputStream(bs), object);
             return bs.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new MarshallingException(e);
         }
     }
 
@@ -71,15 +71,15 @@ public class JavaSerializableResolverStrategy
                             byte[] object,
                             ClassLoader classloader) {
         try (ByteArrayInputStream bs = new ByteArrayInputStream(object)) {
-            is = new ObjectInputStream(bs) {
+            ObjectInputStream ois = new ObjectInputStream(bs) {
                 @Override
                 protected Class<?> resolveClass(ObjectStreamClass desc) throws ClassNotFoundException {
                     return Class.forName(desc.getName(), true, classloader);
                 }
             };
-            return read(is);
+            return read(ois);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new UnmarshallingException(e);
         }
     }
 
@@ -100,7 +100,7 @@ public class JavaSerializableResolverStrategy
         try {
             return MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JsonProcessingException writing object as json : " + e.getMessage(), e);
+            throw new MarshallingException(e);
         }
     }
 
@@ -109,12 +109,8 @@ public class JavaSerializableResolverStrategy
         try {
             Class<?> loadClass = Thread.currentThread().getContextClassLoader().loadClass(dataType);
             return MAPPER.readValue(json, loadClass);
-        } catch (ClassNotFoundException e) {
-            throw new IllegalArgumentException("ClassNotFoundException while reading object from json : " + e.getMessage(), e);
-        } catch (JsonMappingException e) {
-            throw new IllegalArgumentException("JsonMappingException while reading object from json : " + e.getMessage(), e);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JsonProcessingException while reading object fom json : " + e.getMessage(), e);
+        } catch (ClassNotFoundException | JsonProcessingException e) {
+            throw new UnmarshallingException(e);
         }
     }
 }

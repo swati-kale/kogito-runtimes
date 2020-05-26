@@ -24,11 +24,11 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import org.kie.api.marshalling.MarshallingException;
 import org.kie.api.marshalling.ObjectMarshallingStrategy;
 import org.kie.api.marshalling.ObjectMarshallingStrategyAcceptor;
+import org.kie.api.marshalling.UnmarshallingException;
 
 public class IdentityPlaceholderResolverStrategy
     implements
@@ -39,12 +39,12 @@ public class IdentityPlaceholderResolverStrategy
 
     private String name = IdentityPlaceholderResolverStrategy.class.getName();
     private ObjectMarshallingStrategyAcceptor acceptor;
-    private static ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     
     public IdentityPlaceholderResolverStrategy(ObjectMarshallingStrategyAcceptor acceptor) {
         this.acceptor = acceptor;
-        this.ids = new HashMap<Integer, Object>();
-        this.objects = new IdentityHashMap<Object, Integer>();
+        this.ids = new HashMap<>();
+        this.objects = new IdentityHashMap<>();
     }
 
     public IdentityPlaceholderResolverStrategy(String name, ObjectMarshallingStrategyAcceptor acceptor) {
@@ -75,7 +75,7 @@ public class IdentityPlaceholderResolverStrategy
 
     public void write(ObjectOutputStream os,
                       Object object) throws IOException {
-        Integer id = ( Integer ) objects.get( object );
+        Integer id = objects.get( object );
         if ( id == null ) {
             id = ids.size();
             ids.put( id, object );
@@ -91,13 +91,13 @@ public class IdentityPlaceholderResolverStrategy
     public byte[] marshal(Context context,
                           ObjectOutputStream os,
                           Object object) {
-        Integer id = ( Integer ) objects.get( object );
+        Integer id = objects.get( object );
         if ( id == null ) {
             id = ids.size();
             ids.put( id, object );
             objects.put(  object, id );
         }
-        return intToByteArray( id.intValue() );
+        return intToByteArray( id );
     }
 
     public Object unmarshal(String dataType, 
@@ -108,7 +108,7 @@ public class IdentityPlaceholderResolverStrategy
         return ids.get( byteArrayToInt( object ) );
     }
     
-    private final byte[] intToByteArray(int value) {
+    private byte[] intToByteArray(int value) {
         return new byte[] {
                 (byte) ((value >>> 24) & 0xFF),
                 (byte) ((value >>> 16) & 0xFF),
@@ -116,7 +116,7 @@ public class IdentityPlaceholderResolverStrategy
                 (byte) (value  & 0xFF) };
     }    
     
-    private final int byteArrayToInt(byte [] b) {
+    private int byteArrayToInt(byte [] b) {
         return (b[0] << 24)
                 + ((b[1] & 0xFF) << 16)
                 + ((b[2] & 0xFF) << 8)
@@ -145,7 +145,7 @@ public class IdentityPlaceholderResolverStrategy
         try {
             return MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JsonProcessingException writing object as json : " + e.getMessage(), e);
+            throw new MarshallingException(e);
         }
     }
 
@@ -154,12 +154,8 @@ public class IdentityPlaceholderResolverStrategy
         try {
             Class<?> loadClass = Thread.currentThread().getContextClassLoader().loadClass(dataType);
             return MAPPER.readValue(json, loadClass);
-        } catch (ClassNotFoundException e) {
-            throw new IllegalArgumentException("ClassNotFoundException while reading object from json : " + e.getMessage(), e);
-        } catch (JsonMappingException e) {
-            throw new IllegalArgumentException("JsonMappingException while reading object from json : " + e.getMessage(), e);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JsonProcessingException while reading object fom json : " + e.getMessage(), e);
+        } catch (ClassNotFoundException | JsonProcessingException e) {
+            throw new UnmarshallingException(e);
         }
     }
 }

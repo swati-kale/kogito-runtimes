@@ -31,21 +31,20 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 public class CommonUtils {
 
-    private static MongoDatabase mongoDatabase;
-    private static MongoCollection<ProcessInstanceModel> collection;
     private static final String KOGITO_STORE = "Kogito_store";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static ObjectMapper MAPPER = new ObjectMapper();
+    private CommonUtils() {
+    }
 
     public static MongoCollection<ProcessInstanceModel> getCollection(MongoClient mongoClient, String processId) {
 
         CodecRegistry registry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
-                                                fromProviders(new ProcessInstanceModelCodecProvider()));
-        mongoDatabase = mongoClient.getDatabase(KOGITO_STORE).withCodecRegistry(registry);
-        collection = mongoDatabase.getCollection(processId,
-                                                 ProcessInstanceModel.class)
-                                  .withCodecRegistry(registry);
-        return collection;
+                fromProviders(new ProcessInstanceModelCodecProvider()));
+        MongoDatabase mongoDatabase = mongoClient.getDatabase(KOGITO_STORE).withCodecRegistry(registry);
+        return mongoDatabase.getCollection(processId,
+                ProcessInstanceModel.class)
+                .withCodecRegistry(registry);
     }
 
     public static ObjectMapper getObjectMapper() {
@@ -54,10 +53,9 @@ public class CommonUtils {
 
     public static ProcessInstanceModel convertProcessInstanceDoument(ProcessInstanceDocument data) {
 
-        ProcessInstanceModel model = new ProcessInstanceModel(data.getId(), data
-                                                                                .getContent(),
-                                                              Document.parse(data.getLegacyPIJson()), Document.parse(data.getHeader()));
-        return model;
+        return new ProcessInstanceModel(data.getId(), data
+                .getContent(),
+                Document.parse(data.getLegacyPIJson()), Document.parse(data.getHeader()));
     }
 
     public static ProcessInstanceDocument convertProcessInstance(ProcessInstanceModel data) {
