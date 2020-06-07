@@ -24,9 +24,9 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
-import org.jbpm.marshalling.impl.ProcessInstanceDocument;
-import org.kie.kogito.mongodb.codec.ProcessInstanceModelCodecProvider;
-import org.kie.kogito.mongodb.model.ProcessInstanceModel;
+import org.jbpm.marshalling.impl.ProcessInstanceData;
+import org.kie.kogito.mongodb.codec.ProcessInstanceDocumentCodecProvider;
+import org.kie.kogito.mongodb.model.ProcessInstanceDocument;
 import org.kie.kogito.mongodb.model.Strategy;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -38,25 +38,20 @@ public class CommonUtils {
 
     private CommonUtils() {}
 
-    public static MongoCollection<ProcessInstanceModel> getCollection(MongoClient mongoClient, String processId) {
-
-        CodecRegistry registry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
-                                                fromProviders(PojoCodecProvider.builder().automatic(true).build(), new ProcessInstanceModelCodecProvider()));
+    public static MongoCollection<ProcessInstanceDocument> getCollection(MongoClient mongoClient, String processId) {
+        CodecRegistry registry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), fromProviders(PojoCodecProvider.builder().automatic(true).build(), new ProcessInstanceDocumentCodecProvider()));
         MongoDatabase mongoDatabase = mongoClient.getDatabase(KOGITO_STORE).withCodecRegistry(registry);
-        return mongoDatabase.getCollection(processId,
-                                           ProcessInstanceModel.class)
-                            .withCodecRegistry(registry);
+        return mongoDatabase.getCollection(processId, ProcessInstanceDocument.class).withCodecRegistry(registry);
     }
 
-    public static ProcessInstanceModel convertProcessInstanceDoument(ProcessInstanceDocument data) {
-        return new ProcessInstanceModel(
-                                        Document.parse(data.getlegacyProcessInstance()), data.getStrategies().entrySet().stream().map(e -> new Strategy(e.getValue(), e.getKey())).collect(Collectors.toList()));
+    public static ProcessInstanceDocument convertToProcessInstanceDoument(ProcessInstanceData data) {
+        return new ProcessInstanceDocument(Document.parse(data.getlegacyProcessInstance()), data.getStrategies().entrySet().stream().map(e -> new Strategy(e.getValue(), e.getKey())).collect(Collectors.toList()));
     }
 
-    public static ProcessInstanceDocument convertProcessInstance(ProcessInstanceModel data) {
-        ProcessInstanceDocument doc = new ProcessInstanceDocument();
-        doc.setlegacyProcessInstance(data.getProcessInstance().toJson());
-        doc.setStrategies(data.getStrategies().stream().collect(Collectors.toMap(Strategy::getStrategyName, Strategy::getStrategyId)));
-        return doc;
+    public static ProcessInstanceData convertToProcessInstanceData(ProcessInstanceDocument pidoc) {
+        ProcessInstanceData piData = new ProcessInstanceData();
+        piData.setlegacyProcessInstance(pidoc.getProcessInstance().toJson());
+        piData.setStrategies(pidoc.getStrategies().stream().collect(Collectors.toMap(Strategy::getStrategyName, Strategy::getStrategyId)));
+        return piData;
     }
 }

@@ -47,12 +47,12 @@ public class ProtobufProcessMarshaller
         implements
         ProcessMarshaller {
 
-    private static boolean persistWorkItemVars = Boolean.parseBoolean(System.getProperty("org.jbpm.wi.variable.persist", "true"));
-    private static final String DOCUMENT_MARSHALLING_STRATEGY = "org.drools.core.marshalling.impl.DocumentMarshallingStrategy";
-    // mainly for testability as the setting is global
-    public static void setWorkItemVarsPersistence(boolean turnOn) {
-        persistWorkItemVars = turnOn;
-    }
+	private static boolean persistWorkItemVars = Boolean.parseBoolean(System.getProperty("org.jbpm.wi.variable.persist", "true"));
+	private static final String DOCUMENT_MARSHALLING_STRATEGY = "org.drools.core.marshalling.impl.DocumentMarshallingStrategy";
+	// mainly for testability as the setting is global
+	public static void setWorkItemVarsPersistence(boolean turnOn) {
+		persistWorkItemVars = turnOn;
+	}
 
     public void writeProcessInstances(MarshallerWriteContext context) throws IOException {
         ProtobufMessages.ProcessData.Builder _pdata = (ProtobufMessages.ProcessData.Builder) context.parameterObject;
@@ -130,11 +130,11 @@ public class ProtobufProcessMarshaller
                 .setState( workItem.getState() );
 
         if (workItem instanceof org.drools.core.process.instance.WorkItem) {
-            if (((org.drools.core.process.instance.WorkItem)workItem).getDeploymentId() != null){
-            _workItem.setDeploymentId(((org.drools.core.process.instance.WorkItem)workItem).getDeploymentId());
-            }
-            _workItem.setNodeId(((org.drools.core.process.instance.WorkItem)workItem).getNodeId())
-            .setNodeInstanceId(((org.drools.core.process.instance.WorkItem)workItem).getNodeInstanceId());
+        	if (((org.drools.core.process.instance.WorkItem)workItem).getDeploymentId() != null){
+        	_workItem.setDeploymentId(((org.drools.core.process.instance.WorkItem)workItem).getDeploymentId());
+        	}
+        	_workItem.setNodeId(((org.drools.core.process.instance.WorkItem)workItem).getNodeId())
+        	.setNodeInstanceId(((org.drools.core.process.instance.WorkItem)workItem).getNodeInstanceId());
         }
 
         if ( includeVariables ) {
@@ -183,10 +183,10 @@ public class ProtobufProcessMarshaller
     public static Variable marshallVariable(MarshallerWriteContext context,
                                             String name,
                                             Object value) throws IOException {
-        JBPMMessages.Variable.Builder builder = JBPMMessages.Variable.newBuilder().setName(name);
-        if (value != null) {
-            ObjectMarshallingStrategy strategy = context.objectMarshallingStrategyStore.getStrategyObject(value);
-            Integer index = context.getStrategyIndex(strategy);
+        JBPMMessages.Variable.Builder builder = JBPMMessages.Variable.newBuilder().setName( name );
+        if(value != null){
+            ObjectMarshallingStrategy strategy = context.objectMarshallingStrategyStore.getStrategyObject( value );
+            Integer index = context.getStrategyIndex( strategy );
             if (strategy.getName().equals(DOCUMENT_MARSHALLING_STRATEGY)) {
                 builder.setStrategyIndex(index)
                        .setDataType(strategy.getType(value.getClass()))
@@ -227,7 +227,7 @@ public class ProtobufProcessMarshaller
     }
 
     public static VariableContainer marshallVariablesContainer(MarshallerWriteContext context, Map<String, Object> variables) throws IOException{
-        JBPMMessages.VariableContainer.Builder vcbuilder = JBPMMessages.VariableContainer.newBuilder();
+    	JBPMMessages.VariableContainer.Builder vcbuilder = JBPMMessages.VariableContainer.newBuilder();
         for(String key : variables.keySet()){
             JBPMMessages.Variable.Builder builder = JBPMMessages.Variable.newBuilder().setName( key );
             if(variables.get(key) != null){
@@ -251,37 +251,36 @@ public class ProtobufProcessMarshaller
     public static Object unmarshallVariableValue(MarshallerReaderContext context,
                                                   JBPMMessages.Variable _variable) throws IOException,
                                                                                   ClassNotFoundException {
-        ObjectMarshallingStrategy strategy = context.usedStrategies.get( _variable.getStrategyIndex() );
+        ObjectMarshallingStrategy strategy = context.usedStrategies.get(_variable.getStrategyIndex());
         if(strategy.getName().equals(DOCUMENT_MARSHALLING_STRATEGY)) {
-            return unmarshallVariableFromJson( _variable, strategy);
+            return unmarshallVariableFromJson(_variable, strategy);
         }
         if(_variable.getValue() == null || _variable.getValue().isEmpty()){
             return null;
         }
-        
-       return strategy.unmarshal( _variable.getDataType(), 
+        Object value = strategy.unmarshal( _variable.getDataType(), 
                                            context.strategyContexts.get( strategy ),
                                            context,
                                            _variable.getValue().toByteArray(),
                                            (context.kBase == null)?null:context.kBase.getRootClassLoader() );
-       
+        return value;
     }
 
-    public static Map<String, Object> unmarshallVariableContainerValue(MarshallerReaderContext context, JBPMMessages.VariableContainer _variableContiner)
-            throws IOException, ClassNotFoundException {
-        Map<String, Object> variables = new HashMap<String, Object>();
-        if (_variableContiner.getVariableCount() == 0) {
-            return variables;
-        }
+	public static Map<String, Object> unmarshallVariableContainerValue(MarshallerReaderContext context, JBPMMessages.VariableContainer _variableContiner)
+			throws IOException, ClassNotFoundException {
+		Map<String, Object> variables = new HashMap<String, Object>();
+		if (_variableContiner.getVariableCount() == 0) {
+			return variables;
+		}
 
-        for (Variable _variable : _variableContiner.getVariableList()) {
+		for (Variable _variable : _variableContiner.getVariableList()) {
 
-            Object value = ProtobufProcessMarshaller.unmarshallVariableValue(context, _variable);
+			Object value = ProtobufProcessMarshaller.unmarshallVariableValue(context, _variable);
 
-            variables.put(_variable.getName(), value);
-        }
-        return variables;
-    }
+			variables.put(_variable.getName(), value);
+		}
+		return variables;
+	}
 
     public void init(MarshallerReaderContext context) {
         ExtensionRegistry registry = (ExtensionRegistry) context.parameterObject;
@@ -317,10 +316,7 @@ public class ProtobufProcessMarshaller
         }
     }
     
-    
-    public static Object unmarshallVariableFromJson(
-                                                    JBPMMessages.Variable variable,
-                                                    ObjectMarshallingStrategy strategy) {
+    public static Object unmarshallVariableFromJson(JBPMMessages.Variable variable, ObjectMarshallingStrategy strategy) {
         if (variable.getValueJson() == null || variable.getValueJson().isEmpty()) {
             return null;
         }

@@ -21,7 +21,7 @@ import java.util.List;
 import org.bson.Document;
 import org.bson.codecs.pojo.annotations.BsonProperty;
 
-public class ProcessInstanceModel {
+public class ProcessInstanceDocument {
 
     @BsonProperty("id")
     private String id;
@@ -32,11 +32,11 @@ public class ProcessInstanceModel {
     @BsonProperty("strategies")
     private List<Strategy> strategies = new ArrayList<>();
 
-    public ProcessInstanceModel() {
+    public ProcessInstanceDocument() {
 
     }
 
-    public ProcessInstanceModel(Document doc, List<Strategy> strategies) {
+    public ProcessInstanceDocument(Document doc, List<Strategy> strategies) {
         super();
         processInstance = doc;
         this.strategies = strategies;

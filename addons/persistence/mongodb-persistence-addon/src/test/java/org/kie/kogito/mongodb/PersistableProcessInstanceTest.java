@@ -20,6 +20,8 @@ import java.util.Collections;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import org.drools.core.io.impl.ClassPathResource;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.kie.kogito.auth.SecurityPolicy;
 import org.kie.kogito.persistence.KogitoProcessInstancesFactory;
@@ -28,19 +30,38 @@ import org.kie.kogito.process.WorkItem;
 import org.kie.kogito.process.bpmn2.BpmnProcess;
 import org.kie.kogito.process.bpmn2.BpmnVariables;
 import org.kie.kogito.services.identity.StaticIdentityProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.FixedHostPortGenericContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.kie.api.runtime.process.ProcessInstance.STATE_ACTIVE;
 import static org.kie.api.runtime.process.ProcessInstance.STATE_COMPLETED;
 
-class PersistProcessInstanceTest {
+class PersistableProcessInstanceTest {
 
-    private MongoClient mongoClient = MongoClients.create();
+    private static final Logger LOGGER = LoggerFactory.getLogger(PersistableProcessInstanceTest.class);
+    private static final String MONGODB_VERSION = System.getProperty("mongodb.version");
     private SecurityPolicy securityPolicy = SecurityPolicy.of(new StaticIdentityProvider("john"));
+    private static final int MONGO_DEFAULT_PORT = 27017;
+
+    @Container
+    public GenericContainer mongoDb = new FixedHostPortGenericContainer("mongo:" + MONGODB_VERSION)
+                                                                                                   .withFixedExposedPort(MONGO_DEFAULT_PORT, MONGO_DEFAULT_PORT)
+                                                                                                   .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+                                                                                                   .waitingFor(Wait.forLogMessage(".*build index done.*", 1));
 
     @Test
     void test() {
-
+        if (MONGODB_VERSION == null) {
+            throw new RuntimeException("Please define a valid MongoDB image version in system property mongodb.version");
+        }
+        LOGGER.info("Using MongoDB image version: {}", MONGODB_VERSION);
+        MongoClient mongoClient = MongoClients.create();
         BpmnProcess process = BpmnProcess.from(new ClassPathResource("BPMN2-UserTask.bpmn2"))
                                          .get(0);
         process.setProcessInstancesFactory(new PersistProcessInstancesFactory(mongoClient));
@@ -64,6 +85,18 @@ class PersistProcessInstanceTest {
         assertThat(workItem.getParameters().get("ActorId")).isEqualTo("john");
         processInstance.completeWorkItem(workItem.getId(), null, securityPolicy);
         assertThat(processInstance.status()).isEqualTo(STATE_COMPLETED);
+    }
+    
+    @BeforeEach
+    public void setUp() {
+        mongoDb.start();
+    }
+
+    @AfterEach
+    public void tearDown() {
+        if (mongoDb != null) {
+            mongoDb.stop();
+        }
     }
 
     private class PersistProcessInstancesFactory extends KogitoProcessInstancesFactory {

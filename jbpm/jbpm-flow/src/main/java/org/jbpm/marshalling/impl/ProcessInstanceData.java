@@ -17,12 +17,12 @@ package org.jbpm.marshalling.impl;
 
 import java.util.Map;
 
-public class ProcessInstanceDocument {
+public class ProcessInstanceData {
 
     private String legacyProcessInstance;
     private Map<String, Integer> strategies;
 
-    public ProcessInstanceDocument() {
+    public ProcessInstanceData() {
         super();
     }
 

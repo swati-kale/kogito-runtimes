@@ -31,7 +31,7 @@ import org.drools.core.marshalling.impl.PersisterHelper;
 import org.drools.core.marshalling.impl.ProcessMarshallerWriteContext;
 import org.drools.core.marshalling.impl.SerializablePlaceholderResolverStrategy;
 import org.jbpm.marshalling.impl.JBPMMessages;
-import org.jbpm.marshalling.impl.ProcessInstanceDocument;
+import org.jbpm.marshalling.impl.ProcessInstanceData;
 import org.jbpm.marshalling.impl.ProcessMarshallerRegistry;
 import org.jbpm.marshalling.impl.ProtobufRuleFlowProcessInstanceMarshaller;
 import org.jbpm.process.instance.impl.ProcessInstanceImpl;
@@ -140,63 +140,53 @@ public class ProcessInstanceMarshaller {
         }
     }
     
-    public ProcessInstanceDocument marshalProcessInstanceToDocument(ProcessInstance<?> processInstance) {
+    public ProcessInstanceData marshalProcessInstanceToDocument(ProcessInstance<?> processInstance) {
 
         try {
-            org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = ((AbstractProcessInstance<?>) processInstance)
-                                                                                                                              .internalGetProcessInstance();
+            org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = ((AbstractProcessInstance<?>) processInstance).internalGetProcessInstance();
 
-            ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext(null, null, null, null,
-                                                                                      env);
-            org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE
-                                                                                                               .getMarshaller(legacyProcessInstance.getProcess().getType());
+            ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext(null, null, null, null, env);
+            org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE.getMarshaller(legacyProcessInstance.getProcess().getType());
             Object result = marshaller.writeProcessInstance(context, legacyProcessInstance);
-            ProcessInstanceDocument document = new ProcessInstanceDocument();
+            ProcessInstanceData data = new ProcessInstanceData();
             if (marshaller instanceof ProtobufRuleFlowProcessInstanceMarshaller && result != null) {
-                JBPMMessages.ProcessInstance _instance = (JBPMMessages.ProcessInstance) result;
-                document.setlegacyProcessInstance(JsonFormat.printer().print(_instance));
+                JBPMMessages.ProcessInstance instance = (JBPMMessages.ProcessInstance) result;
+                data.setlegacyProcessInstance(JsonFormat.printer().print(instance));
             }
             //saving marshalling strategy
             Map<String, Integer> strategies = new HashMap<>();
             for (Entry<ObjectMarshallingStrategy, Integer> entry : context.usedStrategies.entrySet()) {
                 strategies.put(entry.getKey().getName(), entry.getValue());
             }
-            document.setStrategies(strategies);
+            data.setStrategies(strategies);
 
             ((WorkflowProcessInstanceImpl) legacyProcessInstance).disconnect();
-            return document;
+            return data;
         } catch (Exception e) {
             throw new ProcessInstanceMarshallingException(processInstance.id(), e, "Error while marshalling process instance with id : ");
         }
     }
 
-    public <T extends Model> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceDocument processDoc,
-                                                                                 Process<?> process) {
+    public <T extends Model> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceData data, Process<?> process) {
         Model m = (Model) process.createModel();
         AbstractProcessInstance<?> processInstance = (AbstractProcessInstance<?>) process.createInstance(m);
-        return unmarshalProcessInstanceDocument(processDoc, process, processInstance);
+        return unmarshalProcessInstanceDocument(data, process, processInstance);
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Model> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceDocument processDoc,
-                                                                                 Process<?> process,
-                                                                                 AbstractProcessInstance<?> processInstance) {
+    public <T extends Model> ProcessInstance<T> unmarshalProcessInstanceDocument(ProcessInstanceData data, Process<?> process, AbstractProcessInstance<?> processInstance) {
         try {
-            MarshallerReaderContext context = new MarshallerReaderContext(
-                                                                          Collections.singletonMap(process.id(), ((AbstractProcess<?>) process).legacyProcess()), null, null,
-                                                                          null, env, null, true, true);
+            MarshallerReaderContext context = new MarshallerReaderContext(Collections.singletonMap(process.id(), ((AbstractProcess<?>) process).legacyProcess()), null, null,null, env, null, true, true);
             //converting ProcessInstanceDocument to JBPMMessages
             JsonFormat.Parser parser = JsonFormat.parser();
             JBPMMessages.ProcessInstance.Builder builder = JBPMMessages.ProcessInstance.newBuilder();
-            parser.merge(processDoc.getlegacyProcessInstance(), builder);
+            parser.merge(data.getlegacyProcessInstance(), builder);
             
             JBPMMessages.ProcessInstance instance = builder.build();
             context.parameterObject = instance;
-            org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE
-                                                                                                               .getMarshaller(RuleFlowProcess.RULEFLOW_TYPE);
-            for (Map.Entry<String, Integer> entry : processDoc.getStrategies().entrySet()) {
-                ObjectMarshallingStrategy strategyObject = context.resolverStrategyFactory
-                                                                                          .getStrategyObject(entry.getKey());
+            org.jbpm.marshalling.impl.ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE.getMarshaller(RuleFlowProcess.RULEFLOW_TYPE);
+            for (Map.Entry<String, Integer> entry : data.getStrategies().entrySet()) {
+                ObjectMarshallingStrategy strategyObject = context.resolverStrategyFactory.getStrategyObject(entry.getKey());
                 if (strategyObject != null) {
                     context.usedStrategies.put(entry.getValue(), strategyObject);
                 }

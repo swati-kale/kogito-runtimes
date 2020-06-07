@@ -29,23 +29,23 @@ import org.bson.codecs.Codec;
 import org.bson.codecs.CollectibleCodec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
-import org.kie.kogito.mongodb.model.ProcessInstanceModel;
+import org.kie.kogito.mongodb.model.ProcessInstanceDocument;
 import org.kie.kogito.mongodb.model.Strategy;
 
-public class ProcessInstanceModelCodec implements CollectibleCodec<ProcessInstanceModel> {
+public class ProcessInstanceDocumentCodec implements CollectibleCodec<ProcessInstanceDocument> {
 
     private final Codec<Document> documentCodec;
 
-    public ProcessInstanceModelCodec() {
+    public ProcessInstanceDocumentCodec() {
         documentCodec = MongoClientSettings.getDefaultCodecRegistry().get(Document.class);
     }
 
     @Override
-    public void encode(BsonWriter writer, ProcessInstanceModel processInstanceModel, EncoderContext encoderContext) {
+    public void encode(BsonWriter writer, ProcessInstanceDocument piDoc, EncoderContext encoderContext) {
         Document doc = new Document();
-        doc.put("processInstance", processInstanceModel.getProcessInstance());
+        doc.put("processInstance", piDoc.getProcessInstance());
         List<Document> strategies = new ArrayList<>();
-        for (Strategy s : processInstanceModel.getStrategies()) {
+        for (Strategy s : piDoc.getStrategies()) {
             Document d = new Document();
             d.put("strategyId", s.getStrategyId());
             d.put("strategyName", s.getStrategyName());
@@ -57,12 +57,12 @@ public class ProcessInstanceModelCodec implements CollectibleCodec<ProcessInstan
     }
 
     @Override
-    public Class<ProcessInstanceModel> getEncoderClass() {
-        return ProcessInstanceModel.class;
+    public Class<ProcessInstanceDocument> getEncoderClass() {
+        return ProcessInstanceDocument.class;
     }
 
     @Override
-    public ProcessInstanceModel generateIdIfAbsentFromDocument(ProcessInstanceModel document) {
+    public ProcessInstanceDocument generateIdIfAbsentFromDocument(ProcessInstanceDocument document) {
         if (!documentHasId(document)) {
             document.setId(UUID.randomUUID().toString());
         }
@@ -70,20 +70,20 @@ public class ProcessInstanceModelCodec implements CollectibleCodec<ProcessInstan
     }
 
     @Override
-    public boolean documentHasId(ProcessInstanceModel document) {
+    public boolean documentHasId(ProcessInstanceDocument document) {
         return document.getId() != null;
     }
 
     @Override
-    public BsonValue getDocumentId(ProcessInstanceModel document) {
+    public BsonValue getDocumentId(ProcessInstanceDocument document) {
         return new BsonString(document.getId());
     }
 
     @Override
-    public ProcessInstanceModel decode(BsonReader reader, DecoderContext decoderContext) {
+    public ProcessInstanceDocument decode(BsonReader reader, DecoderContext decoderContext) {
         Document document = documentCodec.decode(reader, decoderContext);
-        ProcessInstanceModel processInstanceModel = new ProcessInstanceModel();
-        processInstanceModel.setProcessInstance((Document) (document.get("processInstance")));
+        ProcessInstanceDocument piDoc = new ProcessInstanceDocument();
+        piDoc.setProcessInstance((Document) (document.get("processInstance")));
         List<Strategy> strategies = new ArrayList<>();
         for (Document d : document.getList("strategies", Document.class)) {
             Strategy s = new Strategy();
@@ -91,7 +91,7 @@ public class ProcessInstanceModelCodec implements CollectibleCodec<ProcessInstan
             s.setStrategyName(d.getString("strategyName"));
             strategies.add(s);
         }
-        processInstanceModel.setStrategies(strategies);
-        return processInstanceModel;
+        piDoc.setStrategies(strategies);
+        return piDoc;
     }
 }

@@ -18,14 +18,14 @@ package org.kie.kogito.mongodb.codec;
 import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
-import org.kie.kogito.mongodb.model.ProcessInstanceModel;
+import org.kie.kogito.mongodb.model.ProcessInstanceDocument;
 
-public class ProcessInstanceModelCodecProvider implements CodecProvider {
+public class ProcessInstanceDocumentCodecProvider implements CodecProvider {
 
     @Override
     public <T> Codec<T> get(Class<T> clazz, CodecRegistry registry) {
-        if (clazz == ProcessInstanceModel.class) {
-            return (Codec<T>) new ProcessInstanceModelCodec();
+        if (clazz == ProcessInstanceDocument.class) {
+            return (Codec<T>) new ProcessInstanceDocumentCodec();
         }
         return null;
     }
