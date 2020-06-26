@@ -121,6 +121,36 @@ public class MarshallerWriteContext extends ObjectOutputStream {
         this.env = env;
 
     }
+    
+    public MarshallerWriteContext(InternalKnowledgeBase kBase,
+                                  InternalWorkingMemory wm,
+                                  Map<Integer, BaseNode> sinks,
+                                  ObjectMarshallingStrategyStore resolverStrategyFactory,
+                                  Environment env) throws IOException {
+        this.stream = this;
+        this.kBase = kBase;
+        this.wm = wm;
+        this.sinks = sinks;
+        this.writersByClass = new HashMap<>();
+        this.writersByClass.put(SlidingTimeWindow.BehaviorJobContext.class, new BehaviorJobContextTimerOutputMarshaller());
+        this.writersByClass.put(ExpireJobContext.class, new ExpireJobContextTimerOutputMarshaller());
+        this.writersByClass.put(TimerNodeJobContext.class, new TimerNodeTimerOutputMarshaller());
+        if (resolverStrategyFactory == null) {
+            ObjectMarshallingStrategy[] strats = (ObjectMarshallingStrategy[]) env.get(EnvironmentName.OBJECT_MARSHALLING_STRATEGIES);
+            if (strats == null) {
+                strats = new ObjectMarshallingStrategy[]{new SerializablePlaceholderResolverStrategy(ClassObjectMarshallingStrategyAcceptor.DEFAULT)};
+            }
+            this.objectMarshallingStrategyStore = new ObjectMarshallingStrategyStoreImpl(strats);
+        } else {
+            this.objectMarshallingStrategyStore = resolverStrategyFactory;
+        }
+        this.usedStrategies = new HashMap<>();
+        this.strategyContext = new HashMap<>();
+        this.terminalTupleMap = new IdentityHashMap<>();
+        this.marshalProcessInstances = true;
+        this.marshalWorkItems = true;
+        this.env = env;
+    }
 
     public Integer getStrategyIndex(ObjectMarshallingStrategy strategy) {
         Integer index = usedStrategies.get( strategy );
