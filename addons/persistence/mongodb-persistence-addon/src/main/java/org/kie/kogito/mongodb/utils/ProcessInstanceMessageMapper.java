@@ -75,8 +75,8 @@ public class ProcessInstanceMessageMapper implements Function<MarshallerReaderCo
                 if (node.get(VALUE) != null) {
 
                     try {
-                        byte[] replace = (getObjectMapper().writeValueAsString(node.path(VALUE))).getBytes();
-                        ((ObjectNode) node).put(VALUE, replace);
+                        String valueAsString = getObjectMapper().writeValueAsString(node.path(VALUE));
+                        ((ObjectNode) node).put(VALUE, valueAsString.getBytes());
                     } catch (Exception e) {
                         throw new DocumentUnmarshallingException(e);
                     }

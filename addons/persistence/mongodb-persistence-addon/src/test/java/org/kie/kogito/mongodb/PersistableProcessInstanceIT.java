@@ -15,8 +15,10 @@
 
 package org.kie.kogito.mongodb;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.mongodb.client.MongoClient;
@@ -31,10 +33,7 @@ import org.kie.kogito.process.WorkItem;
 import org.kie.kogito.process.bpmn2.BpmnProcess;
 import org.kie.kogito.process.bpmn2.BpmnVariables;
 import org.kie.kogito.services.identity.StaticIdentityProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,18 +43,15 @@ import static org.kie.api.runtime.process.ProcessInstance.STATE_COMPLETED;
 @Testcontainers
 class PersistableProcessInstanceIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PersistableProcessInstanceIT.class);
     private SecurityPolicy securityPolicy = SecurityPolicy.of(new StaticIdentityProvider("john"));
-
-    private static MongoDbContainer mongoDbContainer;
+    final static MongoDBContainer mongoDBContainer = new MongoDBContainer();
+    final static String DB_NAME = "test_db";
 
     @BeforeAll
     public static void startContainerAndPublicPortIsAvailable() {
-        mongoDbContainer = new MongoDbContainer();
-        mongoDbContainer.withLogConsumer(new Slf4jLogConsumer(LOGGER))
-                        .waitingFor(Wait.forLogMessage(".*build index done.*", 1));
-        mongoDbContainer.start();
+        mongoDBContainer.start();
     }
+
 
     @Test
     void test() {
@@ -71,6 +67,14 @@ class PersistableProcessInstanceIT {
         parameters.put("doubleVar", 10.11);
         parameters.put("floatVar", 3.5f);
         parameters.put("address", new Address("main street", "Boston", "10005", "US"));
+        
+        PersonWithAddresses pa = new PersonWithAddresses("bob", 16);
+        List<Address> list = new ArrayList<>();
+        list.add(new Address("main street", "Boston", "10005", "US"));
+        list.add(new Address("main street22", "Boston22", "1000522", "US22"));
+
+        pa.setAddresses(list);
+        parameters.put("pa",pa);
         ProcessInstance<BpmnVariables> processInstance = process.createInstance(BpmnVariables.create(parameters));
 
         processInstance.start();

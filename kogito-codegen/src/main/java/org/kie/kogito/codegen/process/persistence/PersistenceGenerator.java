@@ -77,6 +77,8 @@ public class PersistenceGenerator extends AbstractGenerator {
     private static final String KOGITO_PROCESS_INSTANCE_FACTORY= "org.kie.kogito.persistence.KogitoProcessInstancesFactory";
     private static final String KOGITO_PROCESS_INSTANCE_FACTORY_IMPL= "KogitoProcessInstancesFactoryImpl";
     private static final String KOGITO_PROCESS_INSTANCE_PACKAGE = "org.kie.kogito.persistence";
+    private static final String MONGODB_DB_NAME = "dbName";
+    private static final String KOGITO_PERSISTENCE_MONGODB_NAME_PROP = "kogito.persistence.mongodb.dbname";
 
     private final File targetDirectory;
     private final Collection<?> modelClasses;    
@@ -316,10 +318,9 @@ public class PersistenceGenerator extends AbstractGenerator {
     }
     
     private void mongodbBasedPersistence(List<GeneratedFile> generatedFiles) {
-        String dbName = context.getApplicationProperty("kogito.persistence.dbName").orElse("kogito");
         ClassOrInterfaceDeclaration persistenceProviderClazz = new ClassOrInterfaceDeclaration()
-                .setName(KOGITO_PROCESS_INSTANCE_FACTORY_IMPL).setModifiers(Modifier.Keyword.PUBLIC)
-                .addExtendedType(KOGITO_PROCESS_INSTANCE_FACTORY);
+                                                                                                .setName(KOGITO_PROCESS_INSTANCE_FACTORY_IMPL).setModifiers(Modifier.Keyword.PUBLIC)
+                                                                                                .addExtendedType(KOGITO_PROCESS_INSTANCE_FACTORY);
 
         CompilationUnit compilationUnit = new CompilationUnit(KOGITO_PROCESS_INSTANCE_PACKAGE);
         compilationUnit.getTypes().add(persistenceProviderClazz);
@@ -331,14 +332,25 @@ public class PersistenceGenerator extends AbstractGenerator {
             annotator.withApplicationComponent(persistenceProviderClazz);
             annotator.withInjection(constructor);
 
+            FieldDeclaration dbNameField = new FieldDeclaration().addVariable(new VariableDeclarator()
+                                                                                                      .setType(new ClassOrInterfaceType(null, new SimpleName(Optional.class.getCanonicalName()), NodeList.nodeList(
+                                                                                                                                                                                                                   new ClassOrInterfaceType(null,
+                                                                                                                                                                                                                                            String.class.getCanonicalName()))))
+                                                                                                      .setName(MONGODB_DB_NAME));
+            annotator.withConfigInjection(dbNameField, KOGITO_PERSISTENCE_MONGODB_NAME_PROP);
+            // allow to inject path for the file system storage
+            BlockStmt dbNameMethodBody = new BlockStmt();
+            dbNameMethodBody.addStatement(new ReturnStmt(new MethodCallExpr(new NameExpr(MONGODB_DB_NAME), "orElse").addArgument(new StringLiteralExpr("kogito"))));
+            MethodDeclaration dbNameMethod = new MethodDeclaration()
+                                                                  .addModifier(Keyword.PUBLIC)
+                                                                  .setName(MONGODB_DB_NAME)
+                                                                  .setType(String.class)
+                                                                  .setBody(dbNameMethodBody);
+
+            persistenceProviderClazz.addMember(dbNameField);
+            persistenceProviderClazz.addMember(dbNameMethod);
+
         }
-        MethodDeclaration dbNameMethod = new MethodDeclaration()
-                .addModifier(Keyword.PUBLIC)
-                .setName("dbName")
-                .setType(String.class)
-                .setBody(new BlockStmt()
-                .addStatement(new ReturnStmt(new StringLiteralExpr().setString(dbName))));
-        persistenceProviderClazz.addMember(dbNameMethod);
         generatePersistenceProviderClazz(generatedFiles, persistenceProviderClazz, compilationUnit);
     }
 

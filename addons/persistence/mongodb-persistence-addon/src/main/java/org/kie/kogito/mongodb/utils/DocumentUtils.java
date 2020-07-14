@@ -37,7 +37,7 @@ public class DocumentUtils {
     public static final String VALUE = "value";
     public static final String DOCUMENT_ID = "_id";
     public static final String PROCESS_INSTANCE_ID = "id";
-    public static final String STRATEGIES = "stategies";
+    public static final String STRATEGIES = "strategies";
     public static final String NAME = "name";
     public static final String VERSION = "version";
     public static final String VERSION_MAJOR = "versionMajor";

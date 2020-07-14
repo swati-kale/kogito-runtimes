@@ -13,27 +13,38 @@
  * limitations under the License.
  */
 
-package org.kie.kogito.mongodb;
+package org.kie.kogito.mongodb.marshalling.document;
 
-import org.testcontainers.containers.GenericContainer;
+import java.util.List;
 
-public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
+public class ArrayDocument<T> {
 
-    public static final int MONGODB_PORT = 27017;
-    private static final String MONGODB_IMAGE = System.getProperty("mongodb.image");
+    private String name;
+    private List<T> list;
 
-    public MongoDbContainer() {
+    public ArrayDocument() {}
 
-        this(MONGODB_IMAGE);
+    @SuppressWarnings("unchecked")
+    public ArrayDocument(String name, List<?> list) {
+        super();
+        this.name = name;
+        this.list = (List<T>) list;
     }
 
-    public MongoDbContainer(String image) {
-        super(image);
-        addFixedExposedPort(MONGODB_PORT, MONGODB_PORT);
+    public String getName() {
+        return name;
     }
 
-    public Integer getPort() {
-        return getMappedPort(MONGODB_PORT);
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<T> getList() {
+        return list;
+    }
+
+    public void setList(List<T> list) {
+        this.list = list;
     }
 
 }

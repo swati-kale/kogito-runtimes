@@ -15,7 +15,9 @@
 
 package org.kie.kogito.mongodb;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.kie.kogito.mongodb.marshalling.DocumentMarshallingStrategy;
@@ -164,5 +166,46 @@ public class DocumentMarshallingStrategyTest {
         assertEquals(value.getCity(), a.getCity(), "City should be the same");
         assertEquals(value.getCountry(), a.getCountry(), "Country should be the same");
         assertEquals(value.getZipCode(), a.getZipCode(), "ZipCode should be the same");
+    }
+
+    @Test
+    public void testListMarshalling() throws Exception {
+
+        List<Address> list = new ArrayList<>();
+        list.add(new Address("main street", "Boston", "10005", "US"));
+        list.add(new Address("main street22", "Boston22", "1000522", "US22"));
+
+        boolean accepted = documentMarshallingStrategy.accept(list);
+        assertTrue(accepted, "String type should be accepted");
+
+        byte[] data = documentMarshallingStrategy.marshal(null, null, list);
+        assertNotNull(data, "Marshalled content should not be null");
+
+        Object returned = documentMarshallingStrategy.unmarshal("java.util.ArrayList", null, null, data, null);
+        assertNotNull(returned, "Unmarshalled value should not be null");
+
+    }
+
+    @Test
+    public void testPAListMarshalling() throws Exception {
+
+        List<Address> list = new ArrayList<>();
+        list.add(new Address("main street", "Boston", "10005", "US"));
+        list.add(new Address("main street22", "Boston22", "1000522", "US22"));
+        List<Address> value = new ArrayList<Address>();
+        value.add(new Address("main street", "Boston", "10005", "US"));
+        value.add(new Address("main street1", "Boston1", "100051", "US1"));
+        PersonWithAddresses pa = new PersonWithAddresses("john", 20);
+        pa.setAddresses(value);
+
+        boolean accepted = documentMarshallingStrategy.accept(pa);
+        assertTrue(accepted, "String type should be accepted");
+
+        byte[] data = documentMarshallingStrategy.marshal(null, null, list);
+        assertNotNull(data, "Marshalled content should not be null");
+
+        Object returned = documentMarshallingStrategy.unmarshal("org.kie.kogito.mongodb.PersonWithAddresses", null, null, data, null);
+        assertNotNull(returned, "Unmarshalled value should not be null");
+
     }
 }

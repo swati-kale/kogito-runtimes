@@ -27,6 +27,7 @@ import org.drools.core.marshalling.impl.SerializablePlaceholderResolverStrategy;
 import org.jbpm.marshalling.impl.AbstractProtobufProcessInstanceMarshaller;
 import org.jbpm.marshalling.impl.JBPMMessages;
 import org.jbpm.ruleflow.instance.RuleFlowProcessInstance;
+import org.jbpm.workflow.instance.WorkflowProcessInstance;
 import org.jbpm.workflow.instance.impl.WorkflowProcessInstanceImpl;
 import org.kie.api.marshalling.ObjectMarshallingStrategy;
 import org.kie.api.runtime.Environment;
@@ -71,7 +72,6 @@ public class DocumentProcessInstanceMarshaller extends AbstractProtobufProcessIn
 
         try {
             org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = ((AbstractProcessInstance<?>) processInstance).internalGetProcessInstance();
-
             ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext(null, null, null, null, env);
             context.parameterObject = JsonFormat.printer().print(super.writeProcessInstance(context, legacyProcessInstance));
             Document document = new ProcessInstanceDocumentMapper().apply(context);
@@ -91,12 +91,12 @@ public class DocumentProcessInstanceMarshaller extends AbstractProtobufProcessIn
     @SuppressWarnings("unchecked")
     public <T extends Model> ProcessInstance<T> readProcessInstance(Document doc, Process<?> process, AbstractProcessInstance<?> processInstance) {
         try {
-            MarshallerReaderContext context = new MarshallerReaderContext(Collections.singletonMap(process.id(), ((AbstractProcess<?>) process).legacyProcess()), null, null, null, env, null);
+            MarshallerReaderContext context = new MarshallerReaderContext(Collections.singletonMap(process.id(), ((AbstractProcess<?>) process).process()), null, null, null, env, null);
             context.parameterObject = doc;
             JBPMMessages.ProcessInstance instance = new ProcessInstanceMessageMapper().apply(context);
             context.parameterObject = instance;
             org.kie.api.runtime.process.ProcessInstance legacyProcessInstance = super.readProcessInstance(context);
-            processInstance.internalSetProcessInstance(legacyProcessInstance);
+            processInstance.internalSetProcessInstance((WorkflowProcessInstance) legacyProcessInstance);
             return (ProcessInstance<T>) processInstance;
         } catch (Exception e) {
             throw new DocumentUnmarshallingException(processInstance.id(), e, DOCUMENT_UNMARSHALLING_ERROR_MSG);
