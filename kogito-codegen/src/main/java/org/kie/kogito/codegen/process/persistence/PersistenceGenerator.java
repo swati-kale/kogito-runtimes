@@ -26,18 +26,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.kie.kogito.codegen.AbstractGenerator;
-import org.kie.kogito.codegen.ApplicationSection;
-import org.kie.kogito.codegen.BodyDeclarationComparator;
-import org.kie.kogito.codegen.ConfigGenerator;
-import org.kie.kogito.codegen.GeneratedFile;
-import org.kie.kogito.codegen.di.DependencyInjectionAnnotator;
-import org.kie.kogito.codegen.metadata.MetaDataWriter;
-import org.kie.kogito.codegen.metadata.PersistenceLabeler;
-import org.kie.kogito.codegen.metadata.PersistenceProtoFilesLabeler;
-import org.kie.kogito.codegen.process.persistence.proto.Proto;
-import org.kie.kogito.codegen.process.persistence.proto.ProtoGenerator;
-
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.Modifier.Keyword;
@@ -59,6 +47,19 @@ import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.ExplicitConstructorInvocationStmt;
 import com.github.javaparser.ast.stmt.ReturnStmt;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import org.kie.kogito.codegen.AbstractGenerator;
+import org.kie.kogito.codegen.ApplicationSection;
+import org.kie.kogito.codegen.BodyDeclarationComparator;
+import org.kie.kogito.codegen.ConfigGenerator;
+import org.kie.kogito.codegen.GeneratedFile;
+import org.kie.kogito.codegen.di.CDIDependencyInjectionAnnotator;
+import org.kie.kogito.codegen.di.DependencyInjectionAnnotator;
+import org.kie.kogito.codegen.di.SpringDependencyInjectionAnnotator;
+import org.kie.kogito.codegen.metadata.MetaDataWriter;
+import org.kie.kogito.codegen.metadata.PersistenceLabeler;
+import org.kie.kogito.codegen.metadata.PersistenceProtoFilesLabeler;
+import org.kie.kogito.codegen.process.persistence.proto.Proto;
+import org.kie.kogito.codegen.process.persistence.proto.ProtoGenerator;
 
 
 public class PersistenceGenerator extends AbstractGenerator {
@@ -78,7 +79,8 @@ public class PersistenceGenerator extends AbstractGenerator {
     private static final String KOGITO_PROCESS_INSTANCE_FACTORY_IMPL= "KogitoProcessInstancesFactoryImpl";
     private static final String KOGITO_PROCESS_INSTANCE_PACKAGE = "org.kie.kogito.persistence";
     private static final String MONGODB_DB_NAME = "dbName";
-    private static final String KOGITO_PERSISTENCE_MONGODB_NAME_PROP = "kogito.persistence.mongodb.dbname";
+    private static final String QUARKUS_PERSISTENCE_MONGODB_NAME_PROP = "quarkus.mongodb.database";
+    private static final String SPRINGBOOT_PERSISTENCE_MONGODB_NAME_PROP = "spring.data.mongodb.database";
 
     private final File targetDirectory;
     private final Collection<?> modelClasses;    
@@ -152,6 +154,7 @@ public class PersistenceGenerator extends AbstractGenerator {
     @Override
     public void setDependencyInjection(DependencyInjectionAnnotator annotator) {
         this.annotator = annotator;
+       
     }
 
     protected boolean useInjection() {
@@ -337,7 +340,12 @@ public class PersistenceGenerator extends AbstractGenerator {
                                                                                                                                                                                                                    new ClassOrInterfaceType(null,
                                                                                                                                                                                                                                             String.class.getCanonicalName()))))
                                                                                                       .setName(MONGODB_DB_NAME));
-            annotator.withConfigInjection(dbNameField, KOGITO_PERSISTENCE_MONGODB_NAME_PROP);
+            if (annotator instanceof CDIDependencyInjectionAnnotator) {
+                annotator.withConfigInjection(dbNameField, QUARKUS_PERSISTENCE_MONGODB_NAME_PROP);
+            } else if (annotator instanceof SpringDependencyInjectionAnnotator) {
+                annotator.withConfigInjection(dbNameField, SPRINGBOOT_PERSISTENCE_MONGODB_NAME_PROP);
+            }
+           
             // allow to inject path for the file system storage
             BlockStmt dbNameMethodBody = new BlockStmt();
             dbNameMethodBody.addStatement(new ReturnStmt(new MethodCallExpr(new NameExpr(MONGODB_DB_NAME), "orElse").addArgument(new StringLiteralExpr("kogito"))));
