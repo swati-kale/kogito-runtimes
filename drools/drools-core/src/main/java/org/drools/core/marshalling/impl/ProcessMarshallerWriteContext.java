@@ -50,6 +50,14 @@ public class ProcessMarshallerWriteContext extends MarshallerWriteContext {
         super(stream, kBase, wm, sinks, resolverStrategyFactory, env);
     }
     
+    public ProcessMarshallerWriteContext(InternalKnowledgeBase kBase,
+                                         InternalWorkingMemory wm,
+                                         Map<Integer, BaseNode> sinks,
+                                         ObjectMarshallingStrategyStore resolverStrategyFactory,
+                                         Environment env) throws IOException {
+        super(kBase, wm, sinks, resolverStrategyFactory, env);
+    }
+    
     public String getProcessInstanceId() {
         return processInstanceId;
     }

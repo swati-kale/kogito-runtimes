@@ -66,12 +66,19 @@ public class PersistenceGenerator extends AbstractGenerator {
 	private static final String FILESYSTEM_PERSISTENCE_TYPE = "filesystem";
 	private static final String INFINISPAN_PERSISTENCE_TYPE = "infinispan";
 	private static final String DEFAULT_PERSISTENCE_TYPE = INFINISPAN_PERSISTENCE_TYPE;
+	private static final String MONGODB_PERSISTENCE_TYPE = "mongodb";
     
 	private static final String TEMPLATE_NAME = "templateName";
 	private static final String PATH_NAME = "path";
 	
     private static final String KOGITO_APPLICATION_PROTO = "kogito-application.proto";
     private static final String KOGITO_PERSISTENCE_FS_PATH_PROP = "kogito.persistence.filesystem.path";
+    
+    private static final String KOGITO_PROCESS_INSTANCE_FACTORY= "org.kie.kogito.persistence.KogitoProcessInstancesFactory";
+    private static final String KOGITO_PROCESS_INSTANCE_FACTORY_IMPL= "KogitoProcessInstancesFactoryImpl";
+    private static final String KOGITO_PROCESS_INSTANCE_PACKAGE = "org.kie.kogito.persistence";
+    private static final String MONGODB_DB_NAME = "dbName";
+    private static final String KOGITO_PERSISTENCE_MONGODB_NAME_PROP = "kogito.persistence.mongodb.dbname";
 
     private final File targetDirectory;
     private final Collection<?> modelClasses;    
@@ -121,7 +128,9 @@ public class PersistenceGenerator extends AbstractGenerator {
         		inifinispanBasedPersistence(generatedFiles);
         	} else if (persistenceType.equals(FILESYSTEM_PERSISTENCE_TYPE)) {
         		fileSystemBasedPersistence(generatedFiles);
-        	}
+        	}else if (persistenceType.equals(MONGODB_PERSISTENCE_TYPE)) {
+                mongodbBasedPersistence(generatedFiles);
+            }
 
         }
 
@@ -178,28 +187,16 @@ public class PersistenceGenerator extends AbstractGenerator {
     
     
         ClassOrInterfaceDeclaration persistenceProviderClazz = new ClassOrInterfaceDeclaration()
-                .setName("KogitoProcessInstancesFactoryImpl")
+                .setName(KOGITO_PROCESS_INSTANCE_FACTORY_IMPL)
                 .setModifiers(Modifier.Keyword.PUBLIC)
-                .addExtendedType("org.kie.kogito.persistence.KogitoProcessInstancesFactory");
+                .addExtendedType(KOGITO_PROCESS_INSTANCE_FACTORY);
         
-        CompilationUnit compilationUnit = new CompilationUnit("org.kie.kogito.persistence");            
+        CompilationUnit compilationUnit = new CompilationUnit(KOGITO_PROCESS_INSTANCE_PACKAGE);            
         compilationUnit.getTypes().add(persistenceProviderClazz);  
         
         persistenceProviderClazz.addConstructor(Keyword.PUBLIC).setBody(new BlockStmt().addStatement(new ExplicitConstructorInvocationStmt(false, null, NodeList.nodeList(new NullLiteralExpr()))));
         
-        ConstructorDeclaration constructor = persistenceProviderClazz.addConstructor(Keyword.PUBLIC);
-        
-        List<Expression> paramNames = new ArrayList<>();
-        for (String parameter : parameters) {
-            String name = "param" + paramNames.size();
-            constructor.addParameter(parameter, name);
-            paramNames.add(new NameExpr(name));
-        }
-        BlockStmt body = new BlockStmt();
-        ExplicitConstructorInvocationStmt superExp = new ExplicitConstructorInvocationStmt(false, null, NodeList.nodeList(paramNames));
-        body.addStatement(superExp);
-        
-        constructor.setBody(body);
+        ConstructorDeclaration constructor = createConstructorForClazz(persistenceProviderClazz);
         
         if (useInjection()) {
             annotator.withApplicationComponent(persistenceProviderClazz);
@@ -279,28 +276,21 @@ public class PersistenceGenerator extends AbstractGenerator {
                     
                     persistenceProviderClazz.addMember(marshallersMethod);
                 }
-                    
                 
-                String packageName = compilationUnit.getPackageDeclaration().map(pd -> pd.getName().toString()).orElse("");
-                String clazzName = packageName + "." + persistenceProviderClazz.findFirst(ClassOrInterfaceDeclaration.class).map(c -> c.getName().toString()).get();
-             
-                generatedFiles.add(new GeneratedFile(GeneratedFile.Type.CLASS,
-                                                     clazzName.replace('.', '/') + ".java",
-                                                     compilationUnit.toString().getBytes(StandardCharsets.UTF_8))); 
             } catch (Exception e) {
                 throw new RuntimeException("Error when generating marshallers for defined variables", e);
             }
-            persistenceProviderClazz.getMembers().sort(new BodyDeclarationComparator());
+            generatePersistenceProviderClazz(generatedFiles, persistenceProviderClazz, compilationUnit);
         }
     }
     
     protected void fileSystemBasedPersistence(List<GeneratedFile> generatedFiles) {
     	ClassOrInterfaceDeclaration persistenceProviderClazz = new ClassOrInterfaceDeclaration()
-                .setName("KogitoProcessInstancesFactoryImpl")
+                .setName(KOGITO_PROCESS_INSTANCE_FACTORY_IMPL)
                 .setModifiers(Modifier.Keyword.PUBLIC)
-                .addExtendedType("org.kie.kogito.persistence.KogitoProcessInstancesFactory");
+                .addExtendedType(KOGITO_PROCESS_INSTANCE_FACTORY);
         
-        CompilationUnit compilationUnit = new CompilationUnit("org.kie.kogito.persistence");            
+        CompilationUnit compilationUnit = new CompilationUnit(KOGITO_PROCESS_INSTANCE_PACKAGE);            
         compilationUnit.getTypes().add(persistenceProviderClazz);                 
         
         if (useInjection()) {
@@ -324,13 +314,71 @@ public class PersistenceGenerator extends AbstractGenerator {
             persistenceProviderClazz.addMember(pathMethod);
         }
         
-        String packageName = compilationUnit.getPackageDeclaration().map(pd -> pd.getName().toString()).orElse("");
-        String clazzName = packageName + "." + persistenceProviderClazz.findFirst(ClassOrInterfaceDeclaration.class).map(c -> c.getName().toString()).get();
-     
-        generatedFiles.add(new GeneratedFile(GeneratedFile.Type.CLASS,
-                                             clazzName.replace('.', '/') + ".java",
-                                             compilationUnit.toString().getBytes(StandardCharsets.UTF_8))); 
-        
+        generatePersistenceProviderClazz(generatedFiles, persistenceProviderClazz, compilationUnit);
+    }
+    
+    private void mongodbBasedPersistence(List<GeneratedFile> generatedFiles) {
+        ClassOrInterfaceDeclaration persistenceProviderClazz = new ClassOrInterfaceDeclaration()
+                                                                                                .setName(KOGITO_PROCESS_INSTANCE_FACTORY_IMPL).setModifiers(Modifier.Keyword.PUBLIC)
+                                                                                                .addExtendedType(KOGITO_PROCESS_INSTANCE_FACTORY);
+
+        CompilationUnit compilationUnit = new CompilationUnit(KOGITO_PROCESS_INSTANCE_PACKAGE);
+        compilationUnit.getTypes().add(persistenceProviderClazz);
+
+        persistenceProviderClazz.addConstructor(Keyword.PUBLIC).setBody(new BlockStmt().addStatement(new ExplicitConstructorInvocationStmt(false, null, NodeList.nodeList(new NullLiteralExpr()))));
+
+        ConstructorDeclaration constructor = createConstructorForClazz(persistenceProviderClazz);
+        if (useInjection()) {
+            annotator.withApplicationComponent(persistenceProviderClazz);
+            annotator.withInjection(constructor);
+
+            FieldDeclaration dbNameField = new FieldDeclaration().addVariable(new VariableDeclarator()
+                                                                                                      .setType(new ClassOrInterfaceType(null, new SimpleName(Optional.class.getCanonicalName()), NodeList.nodeList(
+                                                                                                                                                                                                                   new ClassOrInterfaceType(null,
+                                                                                                                                                                                                                                            String.class.getCanonicalName()))))
+                                                                                                      .setName(MONGODB_DB_NAME));
+            annotator.withConfigInjection(dbNameField, KOGITO_PERSISTENCE_MONGODB_NAME_PROP);
+            // allow to inject path for the file system storage
+            BlockStmt dbNameMethodBody = new BlockStmt();
+            dbNameMethodBody.addStatement(new ReturnStmt(new MethodCallExpr(new NameExpr(MONGODB_DB_NAME), "orElse").addArgument(new StringLiteralExpr("kogito"))));
+            MethodDeclaration dbNameMethod = new MethodDeclaration()
+                                                                  .addModifier(Keyword.PUBLIC)
+                                                                  .setName(MONGODB_DB_NAME)
+                                                                  .setType(String.class)
+                                                                  .setBody(dbNameMethodBody);
+
+            persistenceProviderClazz.addMember(dbNameField);
+            persistenceProviderClazz.addMember(dbNameMethod);
+
+        }
+        generatePersistenceProviderClazz(generatedFiles, persistenceProviderClazz, compilationUnit);
+    }
+
+    private ConstructorDeclaration createConstructorForClazz(ClassOrInterfaceDeclaration persistenceProviderClazz) {
+        ConstructorDeclaration constructor = persistenceProviderClazz.addConstructor(Keyword.PUBLIC);
+        List<Expression> paramNames = new ArrayList<>();
+        for (String parameter : parameters) {
+            String name = "param" + paramNames.size();
+            constructor.addParameter(parameter, name);
+            paramNames.add(new NameExpr(name));
+        }
+        BlockStmt body = new BlockStmt();
+        ExplicitConstructorInvocationStmt superExp = new ExplicitConstructorInvocationStmt(false, null, NodeList.nodeList(paramNames));
+        body.addStatement(superExp);
+
+        constructor.setBody(body);
+        return constructor;
+    }
+
+    private void generatePersistenceProviderClazz(List<GeneratedFile> generatedFiles, ClassOrInterfaceDeclaration persistenceProviderClazz, CompilationUnit compilationUnit) {
+        String pkgName = compilationUnit.getPackageDeclaration().map(pd -> pd.getName().toString()).orElse("");
+        Optional<ClassOrInterfaceDeclaration> firstClazz = persistenceProviderClazz.findFirst(ClassOrInterfaceDeclaration.class);
+        Optional<String> firstClazzName = firstClazz.map(c -> c.getName().toString());
+        if (firstClazzName.isPresent()) {
+            String clazzName = pkgName + "." + firstClazzName.get();
+
+            generatedFiles.add(new GeneratedFile(GeneratedFile.Type.CLASS, clazzName.replace('.', '/') + ".java", compilationUnit.toString().getBytes(StandardCharsets.UTF_8)));
+        }
         persistenceProviderClazz.getMembers().sort(new BodyDeclarationComparator());
     }
 }
