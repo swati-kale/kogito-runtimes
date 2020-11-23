@@ -23,7 +23,7 @@ import org.kie.kogito.uow.UnitOfWorkManager;
 
 public class UnitOfWorkExecutor {
 
-    public static <T> T executeInUnitOfWork(UnitOfWorkManager uowManager, Supplier<T> supplier) {
+    public synchronized static <T> T executeInUnitOfWork(UnitOfWorkManager uowManager, Supplier<T> supplier) {
         T result = null;
         UnitOfWork uow = uowManager.newUnitOfWork();
         
