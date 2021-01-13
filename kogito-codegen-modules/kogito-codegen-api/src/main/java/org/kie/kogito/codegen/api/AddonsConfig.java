@@ -19,6 +19,7 @@ public class AddonsConfig {
 
     public static final AddonsConfig DEFAULT = builder()
             .withPersistence(false)
+            .withTransaction(false)
             .withTracing(false)
             .withMonitoring(false)
             .withPrometheusMonitoring(false)
@@ -27,23 +28,29 @@ public class AddonsConfig {
             .build();
 
     private final boolean usePersistence;
+    private final boolean useTransaction;
     private final boolean useTracing;
     private final boolean useMonitoring;
     private final boolean usePrometheusMonitoring;
     private final boolean useKnativeEventing;
     private final boolean useCloudEvents;
 
-    private AddonsConfig(boolean usePersistence, boolean useTracing, boolean useMonitoring, boolean usePrometheusMonitoring, boolean useKnativeEventing, boolean useCloudEvents) {
+    private AddonsConfig(boolean usePersistence, boolean useTransaction, boolean useTracing, boolean useMonitoring, boolean usePrometheusMonitoring, boolean useKnativeEventing, boolean useCloudEvents) {
         this.usePersistence = usePersistence;
         this.useTracing = useTracing;
         this.useMonitoring = useMonitoring;
         this.usePrometheusMonitoring = usePrometheusMonitoring;
         this.useKnativeEventing = useKnativeEventing;
         this.useCloudEvents = useCloudEvents;
+        this.useTransaction = useTransaction;
     }
 
     public boolean usePersistence() {
         return usePersistence;
+    }
+
+    public boolean useTransaction() {
+        return useTransaction;
     }
 
     public boolean useTracing() {
@@ -84,6 +91,7 @@ public class AddonsConfig {
 
     public static class AddonsConfigBuilder {
         private boolean usePersistence;
+        private boolean useTransaction;
         private boolean useTracing;
         private boolean useMonitoring;
         private boolean usePrometheusMonitoring;
@@ -95,6 +103,11 @@ public class AddonsConfig {
 
         public AddonsConfigBuilder withPersistence(boolean usePersistence) {
             this.usePersistence = usePersistence;
+            return this;
+        }
+
+        public AddonsConfigBuilder withTransaction(boolean useTransaction) {
+            this.useTransaction = useTransaction;
             return this;
         }
 
@@ -124,7 +137,7 @@ public class AddonsConfig {
         }
 
         public AddonsConfig build() {
-            return new AddonsConfig(usePersistence, useTracing, useMonitoring, usePrometheusMonitoring, useKnativeEventing, useCloudEvents);
+            return new AddonsConfig(usePersistence, useTransaction, useTracing, useMonitoring, usePrometheusMonitoring, useKnativeEventing, useCloudEvents);
         }
     }
 }

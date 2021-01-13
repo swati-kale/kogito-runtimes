@@ -54,7 +54,7 @@ import org.kie.kogito.codegen.core.context.QuarkusKogitoBuildContext;
 import org.kie.kogito.codegen.core.context.SpringBootKogitoBuildContext;
 import org.kie.kogito.codegen.process.persistence.proto.Proto;
 import org.kie.kogito.codegen.process.persistence.proto.ProtoGenerator;
-
+import org.kie.kogito.persistence.transaction.TransactionExecutor;
 
 public class PersistenceGenerator extends AbstractGenerator {
 
@@ -67,10 +67,14 @@ public class PersistenceGenerator extends AbstractGenerator {
     protected static final String PATH_NAME = "path";
 
     private static final String KOGITO_PERSISTENCE_FS_PATH_PROP = "kogito.persistence.filesystem.path";
-    
-    private static final String KOGITO_PROCESS_INSTANCE_FACTORY_PACKAGE= "org.kie.kogito.persistence.KogitoProcessInstancesFactory";
-    private static final String KOGITO_PROCESS_INSTANCE_FACTORY_IMPL= "KogitoProcessInstancesFactoryImpl";
+
+    private static final String KOGITO_PROCESS_INSTANCE_FACTORY_PACKAGE = "org.kie.kogito.persistence.KogitoProcessInstancesFactory";
+    private static final String KOGITO_PROCESS_INSTANCE_FACTORY_IMPL = "KogitoProcessInstancesFactoryImpl";
     private static final String KOGITO_PROCESS_INSTANCE_PACKAGE = "org.kie.kogito.persistence";
+    private static final String KOGITO_TRANSACTION_EXECUTOR_FULLNAME = "org.kie.kogito.persistence.transaction.AbstractTransactionExecutor";
+    private static final String KOGITO_TRANSACTION_EXECUTOR_IMPL = "TransactionExecutorImpl";
+    private static final String KOGITO_TRANSACTION_EXECUTOR_PACKAGE = "org.kie.kogito.persistence.transaction";
+    private static final String TRANSACTION_EXECUTOR_NAME = "transactionExecutor";
     private static final String MONGODB_DB_NAME = "dbName";
     private static final String QUARKUS_PERSISTENCE_MONGODB_NAME_PROP = "quarkus.mongodb.database";
     private static final String SPRINGBOOT_PERSISTENCE_MONGODB_NAME_PROP = "spring.data.mongodb.database";
@@ -255,8 +259,8 @@ public class PersistenceGenerator extends AbstractGenerator {
     private Collection<GeneratedFile> mongodbBasedPersistence() {
         Collection<GeneratedFile> generatedFiles = new ArrayList<>();
         ClassOrInterfaceDeclaration persistenceProviderClazz = new ClassOrInterfaceDeclaration()
-                                                                                                .setName(KOGITO_PROCESS_INSTANCE_FACTORY_IMPL).setModifiers(Modifier.Keyword.PUBLIC)
-                                                                                                .addExtendedType(KOGITO_PROCESS_INSTANCE_FACTORY_PACKAGE);
+                .setName(KOGITO_PROCESS_INSTANCE_FACTORY_IMPL).setModifiers(Modifier.Keyword.PUBLIC)
+                .addExtendedType(KOGITO_PROCESS_INSTANCE_FACTORY_PACKAGE);
 
         CompilationUnit compilationUnit = new CompilationUnit(KOGITO_PROCESS_INSTANCE_PACKAGE);
         compilationUnit.getTypes().add(persistenceProviderClazz);
@@ -270,10 +274,10 @@ public class PersistenceGenerator extends AbstractGenerator {
             context().getDependencyInjectionAnnotator().withInjection(constructor);
 
             FieldDeclaration dbNameField = new FieldDeclaration().addVariable(new VariableDeclarator()
-                                                                                                      .setType(new ClassOrInterfaceType(null, new SimpleName(Optional.class.getCanonicalName()), NodeList.nodeList(
-                                                                                                                                                                                                                   new ClassOrInterfaceType(null,
-                                                                                                                                                                                                                                            String.class.getCanonicalName()))))
-                                                                                                      .setName(MONGODB_DB_NAME));
+                    .setType(new ClassOrInterfaceType(null, new SimpleName(Optional.class.getCanonicalName()), NodeList.nodeList(
+                            new ClassOrInterfaceType(null,
+                                    String.class.getCanonicalName()))))
+                    .setName(MONGODB_DB_NAME));
             //injecting dbName from quarkus/springboot properties else default kogito
             if (context() instanceof QuarkusKogitoBuildContext) {
                 context().getDependencyInjectionAnnotator().withConfigInjection(dbNameField, QUARKUS_PERSISTENCE_MONGODB_NAME_PROP);
@@ -284,19 +288,68 @@ public class PersistenceGenerator extends AbstractGenerator {
             BlockStmt dbNameMethodBody = new BlockStmt();
             dbNameMethodBody.addStatement(new ReturnStmt(new MethodCallExpr(new NameExpr(MONGODB_DB_NAME), OR_ELSE).addArgument(new StringLiteralExpr("kogito"))));
             MethodDeclaration dbNameMethod = new MethodDeclaration()
-                                                                  .addModifier(Keyword.PUBLIC)
-                                                                  .setName(MONGODB_DB_NAME)
-                                                                  .setType(String.class)
-                                                                  .setBody(dbNameMethodBody);
+                    .addModifier(Keyword.PUBLIC)
+                    .setName(MONGODB_DB_NAME)
+                    .setType(String.class)
+                    .setBody(dbNameMethodBody);
 
             persistenceProviderClazz.addMember(dbNameField);
             persistenceProviderClazz.addMember(dbNameMethod);
 
+            mongodbBasedTransaction(persistenceProviderClazz, generatedFiles);
         }
         generatePersistenceProviderClazz(persistenceProviderClazz, compilationUnit)
                 .ifPresent(generatedFiles::add);
 
         return generatedFiles;
+    }
+
+    private void mongodbBasedTransaction(ClassOrInterfaceDeclaration persistenceProviderClazz, Collection<GeneratedFile> generatedFiles) {
+        if (context().getAddonsConfig().useTransaction()) {
+            FieldDeclaration transactionExecutorField = new FieldDeclaration().addVariable(new VariableDeclarator()
+                    .setType(new ClassOrInterfaceType(null, TransactionExecutor.class.getCanonicalName()))
+                    .setName(TRANSACTION_EXECUTOR_NAME));
+
+            context().getDependencyInjectionAnnotator().withInjection(transactionExecutorField);
+
+            BlockStmt transactionExecutorMethodBody = new BlockStmt();
+            transactionExecutorMethodBody.addStatement(new ReturnStmt(new NameExpr(TRANSACTION_EXECUTOR_NAME)));
+            MethodDeclaration transactionExecutorMethod = new MethodDeclaration()
+                    .addModifier(Keyword.PUBLIC)
+                    .setName(TRANSACTION_EXECUTOR_NAME)
+                    .setType(TransactionExecutor.class.getCanonicalName())
+                    .setBody(transactionExecutorMethodBody);
+
+            persistenceProviderClazz.addMember(transactionExecutorField);
+            persistenceProviderClazz.addMember(transactionExecutorMethod);
+
+            ClassOrInterfaceDeclaration transactionProviderClazz = new ClassOrInterfaceDeclaration()
+                    .setName(KOGITO_TRANSACTION_EXECUTOR_IMPL).setModifiers(Modifier.Keyword.PUBLIC)
+                    .addExtendedType(KOGITO_TRANSACTION_EXECUTOR_FULLNAME);
+
+            CompilationUnit transactionCompilationUnit = new CompilationUnit(KOGITO_TRANSACTION_EXECUTOR_PACKAGE);
+            transactionCompilationUnit.getTypes().add(transactionProviderClazz);
+
+            transactionProviderClazz.addConstructor(Keyword.PUBLIC).setBody(new BlockStmt().addStatement(new ExplicitConstructorInvocationStmt(false, null, NodeList.nodeList(new NullLiteralExpr()))));
+
+            ConstructorDeclaration transactionProviderConstructor = createConstructorForClazz(transactionProviderClazz);
+
+            context().getDependencyInjectionAnnotator().withApplicationComponent(transactionProviderClazz);
+            context().getDependencyInjectionAnnotator().withInjection(transactionProviderConstructor);
+
+            generatePersistenceProviderClazz(transactionProviderClazz, transactionCompilationUnit)
+                    .ifPresent(generatedFiles::add);
+        } else {
+            BlockStmt transactionExecutorMethodBody = new BlockStmt();
+            transactionExecutorMethodBody.addStatement(new ReturnStmt(new NullLiteralExpr()));
+            MethodDeclaration transactionExecutorMethod = new MethodDeclaration()
+                    .addModifier(Keyword.PUBLIC)
+                    .setName(TRANSACTION_EXECUTOR_NAME)
+                    .setType(TransactionExecutor.class.getCanonicalName())
+                    .setBody(transactionExecutorMethodBody);
+
+            persistenceProviderClazz.addMember(transactionExecutorMethod);
+        }
     }
 
     private ConstructorDeclaration createConstructorForClazz(ClassOrInterfaceDeclaration persistenceProviderClazz) {

@@ -15,15 +15,11 @@
 
 package org.kie.kogito.mongodb;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
 import org.drools.core.io.impl.ClassPathResource;
 import org.jbpm.process.instance.impl.Action;
 import org.jbpm.workflow.core.DroolsAction;
@@ -35,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.kie.api.definition.process.Node;
 import org.kie.kogito.auth.SecurityPolicy;
 import org.kie.kogito.persistence.KogitoProcessInstancesFactory;
+import org.kie.kogito.persistence.transaction.TransactionExecutor;
 import org.kie.kogito.process.ProcessInstance;
 import org.kie.kogito.process.ProcessInstanceReadMode;
 import org.kie.kogito.process.ProcessInstances;
@@ -46,13 +43,13 @@ import org.kie.kogito.testcontainers.KogitoMongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.entry;
+import java.util.*;
+import java.util.concurrent.Callable;
+
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.kie.api.runtime.process.ProcessInstance.STATE_ACTIVE;
-import static org.kie.api.runtime.process.ProcessInstance.STATE_COMPLETED;
-import static org.kie.api.runtime.process.ProcessInstance.STATE_ERROR;
+import static org.kie.api.runtime.process.ProcessInstance.*;
+import static org.kie.kogito.mongodb.utils.DocumentConstants.DOCUMENT_ID;
 
 @Testcontainers
 class MongoDBProcessInstancesIT {
@@ -62,12 +59,18 @@ class MongoDBProcessInstancesIT {
     @Container
     final static KogitoMongoDBContainer mongoDBContainer = new KogitoMongoDBContainer();
     final static String DB_NAME = "testdb";
+    final static String COLLECTION_NAME = "UserTask";
+    final static String TEST_ID = "test";
     private static MongoClient mongoClient;
 
     @BeforeAll
     public static void startContainerAndPublicPortIsAvailable() {
         mongoDBContainer.start();
         mongoClient = MongoClients.create(mongoDBContainer.getReplicaSetUrl());
+        // Create the collection
+        MongoCollection<Document> collection = mongoClient.getDatabase(DB_NAME).getCollection(COLLECTION_NAME);
+        collection.insertOne(new Document().append(DOCUMENT_ID, TEST_ID));
+        collection.deleteOne(new Document().append(DOCUMENT_ID, TEST_ID));
     }
 
     @AfterAll
@@ -77,8 +80,21 @@ class MongoDBProcessInstancesIT {
 
     @Test
     void test() {
+        test(null);
+    }
+
+    @Test
+    void test_withTransaction() {
+        try (ClientSession clientSession = mongoClient.startSession()) {
+            clientSession.startTransaction();
+            test(clientSession);
+            clientSession.commitTransaction();
+        }
+    }
+
+    private void test(ClientSession clientSession) {
         BpmnProcess process = BpmnProcess.from(new ClassPathResource("BPMN2-UserTask.bpmn2")).get(0);
-        process.setProcessInstancesFactory(new MongoDBProcessInstancesFactory(mongoClient));
+        process.setProcessInstancesFactory(new MongoDBProcessInstancesFactory(mongoClient, clientSession));
         process.configure();
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("test", "test");
@@ -135,6 +151,19 @@ class MongoDBProcessInstancesIT {
 
     @Test
     void testFindByIdReadMode() {
+        testFindByIdReadMode(null);
+    }
+
+    @Test
+    void testFindByIdReadMode_withTransaction() {
+        try (ClientSession clientSession = mongoClient.startSession()) {
+            clientSession.startTransaction();
+            testFindByIdReadMode(clientSession);
+            clientSession.commitTransaction();
+        }
+    }
+
+    void testFindByIdReadMode(ClientSession clientSession) {
         BpmnProcess process = BpmnProcess.from(new ClassPathResource("BPMN2-UserTask-Script.bpmn2")).get(0);
         // workaround as BpmnProcess does not compile the scripts but just reads the xml
         for (Node node : ((WorkflowProcess) process.process()).getNodes()) {
@@ -146,7 +175,7 @@ class MongoDBProcessInstancesIT {
                 });
             }
         }
-        process.setProcessInstancesFactory(new MongoDBProcessInstancesFactory(mongoClient));
+        process.setProcessInstancesFactory(new MongoDBProcessInstancesFactory(mongoClient, clientSession));
         process.configure();
 
         ProcessInstance<BpmnVariables> mutablePi = process.createInstance(BpmnVariables.create(Collections.singletonMap("var", "value")));
@@ -179,8 +208,21 @@ class MongoDBProcessInstancesIT {
 
     @Test
     void testValuesReadMode() {
+        testFindByIdReadMode(null);
+    }
+
+    @Test
+    void testValuesReadMode_withTransaction() {
+        try (ClientSession clientSession = mongoClient.startSession()) {
+            clientSession.startTransaction();
+            testValuesReadMode(clientSession);
+            clientSession.commitTransaction();
+        }
+    }
+
+    void testValuesReadMode(ClientSession clientSession) {
         BpmnProcess process = BpmnProcess.from(new ClassPathResource("BPMN2-UserTask.bpmn2")).get(0);
-        process.setProcessInstancesFactory(new MongoDBProcessInstancesFactory(mongoClient));
+        process.setProcessInstancesFactory(new MongoDBProcessInstancesFactory(mongoClient, clientSession));
         process.configure();
 
         ProcessInstance<BpmnVariables> processInstance = process.createInstance(BpmnVariables.create(Collections.singletonMap("test", "test")));
@@ -197,13 +239,32 @@ class MongoDBProcessInstancesIT {
 
     private class MongoDBProcessInstancesFactory extends KogitoProcessInstancesFactory {
 
-        public MongoDBProcessInstancesFactory(MongoClient mongoClient) {
+        private ClientSession clientSession;
+
+        public MongoDBProcessInstancesFactory(MongoClient mongoClient, ClientSession clientSession) {
             super(mongoClient);
+            this.clientSession = clientSession;
         }
 
         @Override
         public String dbName() {
             return DB_NAME;
+        }
+
+        @Override
+        public TransactionExecutor transactionExecutor() {
+            return new TransactionExecutor() {
+
+                @Override
+                public <T> T execute(Callable<T> callable) throws Exception {
+                    return null;
+                }
+
+                @Override
+                public <T> T getResource() {
+                    return (T) clientSession;
+                }
+            };
         }
     }
 }

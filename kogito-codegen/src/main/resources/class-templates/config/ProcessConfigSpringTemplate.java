@@ -5,9 +5,8 @@ import org.kie.kogito.event.EventPublisher;
 import org.kie.kogito.jobs.JobsService;
 import org.kie.kogito.process.ProcessEventListenerConfig;
 import org.kie.kogito.process.WorkItemHandlerConfig;
-import org.kie.kogito.signal.SignalManagerHub;
+import org.kie.kogito.persistence.transaction.TransactionExecutor;
 import org.kie.kogito.uow.UnitOfWorkManager;
-import org.kie.services.signal.DefaultSignalManagerHub;
 
 @org.springframework.stereotype.Component
 public class ProcessConfig extends org.kie.kogito.process.impl.AbstractProcessConfig {
@@ -20,7 +19,8 @@ public class ProcessConfig extends org.kie.kogito.process.impl.AbstractProcessCo
             List<ProcessEventListenerConfig> processEventListenerConfigs,
             List<ProcessEventListener> processEventListeners,
             List<EventPublisher> eventPublishers,
-            ConfigBean configBean) {
+            ConfigBean configBean,
+            List<TransactionExecutor> transactionExecutor) {
 
         super(workItemHandlerConfig,
               processEventListenerConfigs,
@@ -28,6 +28,7 @@ public class ProcessConfig extends org.kie.kogito.process.impl.AbstractProcessCo
               unitOfWorkManager,
               jobsService,
               eventPublishers,
-              configBean.getServiceUrl());
+              configBean.getServiceUrl(),
+              transactionExecutor);
     }
 }

@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.utility.DockerImageName;
 
 /**
  * MongoDB Container for Kogito examples.
@@ -28,10 +29,12 @@ public class KogitoMongoDBContainer extends MongoDBContainer implements TestReso
 
     public static final String NAME = "mongodb";
     public static final int MONGODB_INTERNAL_PORT = 27018;
+    public static final String IMAGE_TAG = "4.4";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KogitoMongoDBContainer.class);
 
     public KogitoMongoDBContainer() {
+        super(DockerImageName.parse("mongo").withTag(IMAGE_TAG));
         withLogConsumer(new Slf4jLogConsumer(LOGGER));
         addFixedExposedPort(MONGODB_INTERNAL_PORT, MONGODB_INTERNAL_PORT);
     }

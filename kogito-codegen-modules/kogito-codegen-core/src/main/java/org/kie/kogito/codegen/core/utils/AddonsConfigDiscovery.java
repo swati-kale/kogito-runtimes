@@ -30,6 +30,7 @@ public class AddonsConfigDiscovery {
     private static final Logger LOGGER = LoggerFactory.getLogger(AddonsConfigDiscovery.class);
 
     public static final String PERSISTENCE_FACTORY_CLASS = "org.kie.kogito.persistence.KogitoProcessInstancesFactory";
+    public static final String TRANSACTION_EXECUTOR_CLASS = "org.kie.kogito.persistence.transaction.AbstractTransactionExecutor";
     public static final String PROMETHEUS_CLASS = "org.kie.kogito.monitoring.prometheus.common.rest.MetricsResource";
     public static final String MONITORING_CORE_CLASS = "org.kie.kogito.monitoring.core.common.MonitoringRegistry";
     public static final String TRACING_CLASS = "org.kie.kogito.tracing.decision.DecisionTracingListener";
@@ -47,6 +48,7 @@ public class AddonsConfigDiscovery {
 
     public static AddonsConfig discover(Predicate<String> classAvailabilityResolver) {
         boolean usePersistence = classAvailabilityResolver.test(PERSISTENCE_FACTORY_CLASS);
+        boolean useTransaction = usePersistence && classAvailabilityResolver.test(TRANSACTION_EXECUTOR_CLASS);
         boolean usePrometheusMonitoring = classAvailabilityResolver.test(PROMETHEUS_CLASS);
         boolean useMonitoring = usePrometheusMonitoring || classAvailabilityResolver.test(MONITORING_CORE_CLASS);
         boolean useTracing = classAvailabilityResolver.test(TRACING_CLASS);
@@ -55,6 +57,7 @@ public class AddonsConfigDiscovery {
 
         AddonsConfig addonsConfig = AddonsConfig.builder()
                 .withPersistence(usePersistence)
+                .withTransaction(useTransaction)
                 .withMonitoring(useMonitoring)
                 .withPrometheusMonitoring(usePrometheusMonitoring)
                 .withTracing(useTracing)

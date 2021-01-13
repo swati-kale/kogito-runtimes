@@ -1365,6 +1365,8 @@
                               <exclude name="**/target/test-classes/**/*.class"/>
                               <!-- To avoid a complaint about duplicate classes as KogitoProcessInstancesFactory.class is required in every persistence addon that is mutually exclusive. -->
                               <exclude name="**/target/classes/org/kie/kogito/persistence/KogitoProcessInstancesFactory.class"/>
+                              <!-- To avoid a complaint about duplicate classes as AbstractTransactionExecutor.class is required in every persistence transaction addon that is mutually exclusive. -->
+                              <exclude name="**/target/classes/org/kie/kogito/persistence/transaction/AbstractTransactionExecutor.class"/>
                               <!-- To avoid a complaint about duplicate classes created by code generation. -->
                               <exclude name="**/target/classes/**/Application.class"/>
                               <exclude name="**/target/classes/**/ApplicationConfig.class"/>

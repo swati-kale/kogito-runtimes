@@ -15,15 +15,10 @@
 
 package org.kie.kogito.codegen.process.persistence;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.ReturnStmt;
@@ -36,36 +31,80 @@ import org.kie.kogito.codegen.core.context.QuarkusKogitoBuildContext;
 import org.kie.kogito.codegen.data.Person;
 import org.kie.kogito.codegen.process.persistence.proto.ReflectionProtoGenerator;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.util.*;
+
 import static com.github.javaparser.StaticJavaParser.parse;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.kie.kogito.codegen.process.persistence.PersistenceGenerator.MONGODB_PERSISTENCE_TYPE;
 
 class MongoDBPersistenceGeneratorTest {
 
     private static final String TEST_RESOURCES = "src/test/resources";
-    KogitoBuildContext context = QuarkusKogitoBuildContext.builder()
-            .withApplicationProperties(new File(TEST_RESOURCES))
-            .withPackageName(this.getClass().getPackage().getName())
-            .withAddonsConfig(AddonsConfig.builder().withPersistence(true).build())
-            .build();
+
+    private static final String PERSISTENCE_FILE_PATH = "org/kie/kogito/persistence/KogitoProcessInstancesFactoryImpl.java";
+    private static final String TRANSACTION_FILE_PATH = "org/kie/kogito/persistence/transaction/TransactionExecutorImpl.java";
 
     @Test
-    void test() {
+    void test_noTransaction() {
+        KogitoBuildContext context = QuarkusKogitoBuildContext.builder()
+                .withApplicationProperties(new File(TEST_RESOURCES))
+                .withPackageName(this.getClass().getPackage().getName())
+                .withAddonsConfig(AddonsConfig.builder().withPersistence(true).build())
+                .build();
         context.setApplicationProperty("kogito.persistence.type", MONGODB_PERSISTENCE_TYPE);
 
         ReflectionProtoGenerator protoGenerator = ReflectionProtoGenerator.builder().build(Collections.singleton(Person.class));
-        PersistenceGenerator persistenceGenerator = new PersistenceGenerator(
-                context,
-                protoGenerator);
+        PersistenceGenerator persistenceGenerator = new PersistenceGenerator(context, protoGenerator);
+
         Collection<GeneratedFile> generatedFiles = persistenceGenerator.generate();
 
-        Optional<GeneratedFile> generatedCLASSFile = generatedFiles.stream().filter(gf -> gf.category() == GeneratedFileType.SOURCE.category()).findFirst();
+        assertPersistenceFileGenerated(generatedFiles, "null");
+
+        Optional<GeneratedFile> generatedCLASSFile = generatedFiles.stream().filter(gf -> gf.category() == GeneratedFileType.SOURCE.category())
+                .filter(f -> TRANSACTION_FILE_PATH.equals(f.relativePath())).findAny();
+        assertFalse(generatedCLASSFile.isPresent());
+    }
+
+    @Test
+    void test_withTransaction() {
+        KogitoBuildContext context = QuarkusKogitoBuildContext.builder()
+                .withApplicationProperties(new File(TEST_RESOURCES))
+                .withPackageName(this.getClass().getPackage().getName())
+                .withAddonsConfig(AddonsConfig.builder().withPersistence(true).withTransaction(true).build())
+                .build();
+        context.setApplicationProperty("kogito.persistence.type", MONGODB_PERSISTENCE_TYPE);
+
+        ReflectionProtoGenerator protoGenerator = ReflectionProtoGenerator.builder().build(Collections.singleton(Person.class));
+        PersistenceGenerator persistenceGenerator = new PersistenceGenerator(context, protoGenerator);
+
+        Collection<GeneratedFile> generatedFiles = persistenceGenerator.generate();
+
+        assertPersistenceFileGenerated(generatedFiles, "transactionExecutor");
+
+        Optional<GeneratedFile> generatedCLASSFile = generatedFiles.stream().filter(gf -> gf.category() == GeneratedFileType.SOURCE.category())
+                .filter(f -> TRANSACTION_FILE_PATH.equals(f.relativePath())).findAny();
+        assertTrue(generatedCLASSFile.isPresent());
+
+        final CompilationUnit compilationUnit = parse(new ByteArrayInputStream(generatedCLASSFile.get().contents()));
+        final ClassOrInterfaceDeclaration classDeclaration = compilationUnit.findFirst(ClassOrInterfaceDeclaration.class).orElseThrow(() -> new NoSuchElementException("Compilation unit doesn't contain a class or interface declaration!"));
+        assertNotNull(classDeclaration);
+
+        final List<ConstructorDeclaration> constructorDeclarations = compilationUnit.findAll(ConstructorDeclaration.class);
+        assertEquals(2, constructorDeclarations.size());
+
+        Optional<ConstructorDeclaration> annotatedConstructorDeclaration = constructorDeclarations.stream()
+                .filter(c -> c.isAnnotationPresent("Inject")).findAny();
+        assertTrue(annotatedConstructorDeclaration.isPresent());
+    }
+
+    void assertPersistenceFileGenerated(Collection<GeneratedFile> generatedFiles, String transactionMethodReturn) {
+        Optional<GeneratedFile> generatedCLASSFile = generatedFiles.stream().filter(gf -> gf.category() == GeneratedFileType.SOURCE.category())
+                .filter(f -> PERSISTENCE_FILE_PATH.equals(f.relativePath())).findAny();
         assertTrue(generatedCLASSFile.isPresent());
         GeneratedFile classFile = generatedCLASSFile.get();
-        assertEquals("org/kie/kogito/persistence/KogitoProcessInstancesFactoryImpl.java", classFile.relativePath());
 
         final CompilationUnit compilationUnit = parse(new ByteArrayInputStream(classFile.contents()));
 
@@ -73,15 +112,26 @@ class MongoDBPersistenceGeneratorTest {
 
         assertNotNull(classDeclaration);
 
-        final MethodDeclaration methodDeclaration = classDeclaration.findFirst(MethodDeclaration.class, d -> d.getName().getIdentifier().equals("dbName")).orElseThrow(() -> new NoSuchElementException("Class declaration doesn't contain a method named \"dbName\"!"));
-        assertNotNull(methodDeclaration);
-        assertTrue(methodDeclaration.getBody().isPresent());
+        final MethodDeclaration dbNameMethodDeclaration = classDeclaration.findFirst(MethodDeclaration.class, d -> d.getName().getIdentifier().equals("dbName")).orElseThrow(() -> new NoSuchElementException("Class declaration doesn't contain a method named \"dbName\"!"));
+        assertNotNull(dbNameMethodDeclaration);
+        assertTrue(dbNameMethodDeclaration.getBody().isPresent());
 
-        final BlockStmt body = methodDeclaration.getBody().get();
-        assertThat(body.getStatements().size()).isOne();
-        assertTrue(body.getStatements().get(0).isReturnStmt());
+        final BlockStmt dbNameMethodBody = dbNameMethodDeclaration.getBody().get();
+        assertThat(dbNameMethodBody.getStatements().size()).isOne();
+        assertTrue(dbNameMethodBody.getStatements().get(0).isReturnStmt());
 
-        final ReturnStmt returnStmt = (ReturnStmt) body.getStatements().get(0);
-        assertThat(returnStmt.toString()).contains("kogito");
+        final ReturnStmt dbNameReturnStmt = (ReturnStmt) dbNameMethodBody.getStatements().get(0);
+        assertThat(dbNameReturnStmt.toString()).contains("kogito");
+
+        final MethodDeclaration transactionMethodDeclaration = classDeclaration.findFirst(MethodDeclaration.class, d -> "transactionExecutor".equals(d.getName().getIdentifier())).orElseThrow(() -> new NoSuchElementException("Class declaration doesn't contain a method named \"transactionExecutor\"!"));
+        assertNotNull(transactionMethodDeclaration);
+        assertTrue(transactionMethodDeclaration.getBody().isPresent());
+
+        final BlockStmt transactionMethodBody = transactionMethodDeclaration.getBody().get();
+        assertThat(transactionMethodBody.getStatements().size()).isOne();
+        assertTrue(transactionMethodBody.getStatements().get(0).isReturnStmt());
+
+        final ReturnStmt transactionReturnStmt = (ReturnStmt) transactionMethodBody.getStatements().get(0);
+        assertThat(transactionReturnStmt.toString()).contains(transactionMethodReturn);
     }
 }

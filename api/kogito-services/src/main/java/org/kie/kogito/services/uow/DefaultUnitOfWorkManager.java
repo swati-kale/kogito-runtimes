@@ -18,6 +18,8 @@ package org.kie.kogito.services.uow;
 
 import org.kie.kogito.event.EventManager;
 import org.kie.kogito.services.event.impl.BaseEventManager;
+import org.kie.kogito.persistence.transaction.BaseTransactionManager;
+import org.kie.kogito.persistence.transaction.TransactionManager;
 import org.kie.kogito.uow.UnitOfWork;
 import org.kie.kogito.uow.UnitOfWorkFactory;
 import org.kie.kogito.uow.UnitOfWorkManager;
@@ -34,8 +36,10 @@ public class DefaultUnitOfWorkManager implements UnitOfWorkManager {
     private UnitOfWork fallbackUnitOfWork = new PassThroughUnitOfWork();
     // factory used to create unit of work 
     private UnitOfWorkFactory factory;
-    
+
     private EventManager eventManager = new BaseEventManager();
+
+    private TransactionManager transactionManager = new BaseTransactionManager();
 
     public DefaultUnitOfWorkManager(UnitOfWorkFactory factory) {
         super();
@@ -51,7 +55,7 @@ public class DefaultUnitOfWorkManager implements UnitOfWorkManager {
     @Override
     public UnitOfWork currentUnitOfWork() {
         UnitOfWork unit = currentUnitOfWork.get();
-        
+
         if (unit == null) {
             return fallbackUnitOfWork;
         }
@@ -60,10 +64,10 @@ public class DefaultUnitOfWorkManager implements UnitOfWorkManager {
 
     @Override
     public UnitOfWork newUnitOfWork() {
-        
+
         return new ManagedUnitOfWork(factory.create(eventManager), this::associate, this::dissociate, this::dissociate);
     }
-    
+
     protected void associate(UnitOfWork unit) {
         currentUnitOfWork.set(unit);
     }
@@ -75,5 +79,10 @@ public class DefaultUnitOfWorkManager implements UnitOfWorkManager {
     @Override
     public EventManager eventManager() {
         return eventManager;
+    }
+
+    @Override
+    public TransactionManager transactionManager() {
+        return this.transactionManager;
     }
 }

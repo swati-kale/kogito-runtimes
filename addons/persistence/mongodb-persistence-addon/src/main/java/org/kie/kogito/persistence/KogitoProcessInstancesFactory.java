@@ -17,6 +17,7 @@ package org.kie.kogito.persistence;
 
 import com.mongodb.client.MongoClient;
 import org.kie.kogito.mongodb.MongoDBProcessInstances;
+import org.kie.kogito.persistence.transaction.TransactionExecutor;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstancesFactory;
 
@@ -35,8 +36,10 @@ public abstract class KogitoProcessInstancesFactory implements ProcessInstancesF
 
     public abstract String dbName();
 
+    public abstract TransactionExecutor transactionExecutor();
+
     @Override
     public MongoDBProcessInstances<?> createProcessInstances(Process<?> process) {
-        return new MongoDBProcessInstances<>(mongoClient, process, dbName());
+        return new MongoDBProcessInstances<>(mongoClient, process, dbName(), transactionExecutor());
     }
 }

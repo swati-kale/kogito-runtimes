@@ -32,6 +32,7 @@ import org.kie.kogito.process.WorkItemHandlerConfig;
 import org.kie.kogito.services.uow.CollectingUnitOfWorkFactory;
 import org.kie.kogito.services.uow.DefaultUnitOfWorkManager;
 import org.kie.kogito.signal.SignalManagerHub;
+import org.kie.kogito.persistence.transaction.TransactionExecutor;
 import org.kie.kogito.uow.UnitOfWorkManager;
 import org.kie.services.signal.DefaultSignalManagerHub;
 
@@ -50,7 +51,8 @@ public abstract class AbstractProcessConfig implements ProcessConfig {
             Iterable<UnitOfWorkManager> unitOfWorkManager,
             Iterable<JobsService> jobsService,
             Iterable<EventPublisher> eventPublishers,
-            String kogitoService) {
+            String kogitoService,
+            Iterable<TransactionExecutor> transactionExecutor) {
 
         this.workItemHandlerConfig = orDefault(workItemHandlerConfig, DefaultWorkItemHandlerConfig::new);
         this.processEventListenerConfig = merge(processEventListenerConfigs, processEventListeners);
@@ -61,6 +63,7 @@ public abstract class AbstractProcessConfig implements ProcessConfig {
 
         eventPublishers.forEach(publisher -> unitOfWorkManager().eventManager().addPublisher(publisher));
         unitOfWorkManager().eventManager().setService(kogitoService);
+        unitOfWorkManager().transactionManager().setExecutor(orDefault(transactionExecutor, () -> null));
     }
 
     @Override
