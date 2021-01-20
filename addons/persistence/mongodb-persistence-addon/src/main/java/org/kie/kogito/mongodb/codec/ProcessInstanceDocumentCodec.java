@@ -35,6 +35,7 @@ import static org.kie.kogito.mongodb.utils.DocumentConstants.PROCESS_INSTANCE;
 import static org.kie.kogito.mongodb.utils.DocumentConstants.PROCESS_INSTANCE_ID;
 import static org.kie.kogito.mongodb.utils.DocumentConstants.STRATEGIES;
 import static org.kie.kogito.mongodb.utils.DocumentConstants.VALUE;
+import static org.kie.kogito.mongodb.utils.DocumentConstants.VERSION;
 
 public class ProcessInstanceDocumentCodec implements CollectibleCodec<ProcessInstanceDocument> {
 
@@ -50,6 +51,7 @@ public class ProcessInstanceDocumentCodec implements CollectibleCodec<ProcessIns
         doc.put(DOCUMENT_ID, piDoc.getProcessInstance().get(PROCESS_INSTANCE_ID));
         doc.put(PROCESS_INSTANCE, piDoc.getProcessInstance());
         doc.put(STRATEGIES, piDoc.getStrategies().entrySet().stream().map(e -> new Document().append(NAME, e.getKey()).append(VALUE, e.getValue())).collect(Collectors.toList()));
+        doc.put(VERSION, piDoc.getVersion());
         documentCodec.encode(writer, doc, encoderContext);
     }
 
@@ -83,6 +85,7 @@ public class ProcessInstanceDocumentCodec implements CollectibleCodec<ProcessIns
         piDoc.setId(document.getString(DOCUMENT_ID));
         piDoc.setProcessInstance((Document) (document.get(PROCESS_INSTANCE)));
         piDoc.setStrategies(document.getList(STRATEGIES, Document.class).stream().collect(Collectors.toMap(d -> d.getString(NAME), d -> d.getInteger(VALUE))));
+        piDoc.setVersion(document.getInteger(VERSION));
         return piDoc;
     }
 }

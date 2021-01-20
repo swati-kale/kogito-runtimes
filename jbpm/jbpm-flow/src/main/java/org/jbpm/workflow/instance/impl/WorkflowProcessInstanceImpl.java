@@ -888,7 +888,10 @@ public abstract class WorkflowProcessInstanceImpl extends ProcessInstanceImpl im
     }
 
     public void addCompletedNodeId(String uniqueId) {
-        this.completedNodeIds.add(uniqueId.intern());
+        if(!this.completedNodeIds.contains(uniqueId.intern())) {
+            this.completedNodeIds.add(uniqueId.intern()); 
+        }
+        
     }
 
     public List<String> getCompletedNodeIds() {

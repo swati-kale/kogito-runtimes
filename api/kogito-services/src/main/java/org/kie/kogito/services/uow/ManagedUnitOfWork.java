@@ -60,8 +60,8 @@ public class ManagedUnitOfWork implements UnitOfWork {
     }
 
     @Override
-    public void intercept(WorkUnit work) {
-        delegate.intercept(work);
+    public void intercept(WorkUnit work, Object ... options) {
+        delegate.intercept(work, options);
     }
 
     public UnitOfWork delegate() {

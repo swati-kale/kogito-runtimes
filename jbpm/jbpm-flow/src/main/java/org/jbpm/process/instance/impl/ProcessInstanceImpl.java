@@ -56,7 +56,7 @@ public abstract class ProcessInstanceImpl implements ProcessInstance,
     private String rootProcessInstanceId;
     private String description;
     private String rootProcessId;
-
+    private int version;
     public String getId() {
         return this.id;
     }
@@ -65,6 +65,14 @@ public abstract class ProcessInstanceImpl implements ProcessInstance,
         this.id = id;
     }
 
+    public int getVersion() {
+        return this.version;
+    }
+    
+    public void setVersion(final int version) {
+        this.version = version;
+    }
+    
     public void updateProcess(final Process process) {
         setProcess(process);
         XmlProcessDumper dumper = XmlProcessDumperFactory.newXmlProcessDumperFactory();

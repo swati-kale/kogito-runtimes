@@ -46,8 +46,8 @@ public class PassThroughUnitOfWork implements UnitOfWork {
     }
 
     @Override
-    public void intercept(WorkUnit work) {
-        work.perform();
+    public void intercept(WorkUnit work, Object ... options) {
+        work.perform(options);
     }
 
 }

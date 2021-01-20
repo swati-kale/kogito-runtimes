@@ -53,7 +53,7 @@ public class DefaultUnitOfWorkManagerTest {
         final AtomicInteger counter = new AtomicInteger(0);
         assertThat(counter.get()).isEqualTo(0);
         
-        BaseWorkUnit dummyWork = new BaseWorkUnit(counter, (d) -> ((AtomicInteger) d).incrementAndGet());
+        BaseWorkUnit dummyWork = new BaseWorkUnit(counter, (d,o) -> ((AtomicInteger) d).incrementAndGet());
         unit.start();
         unit.intercept(dummyWork);
         unit.end();
@@ -70,7 +70,7 @@ public class DefaultUnitOfWorkManagerTest {
         final AtomicInteger counter = new AtomicInteger(0);
         assertThat(counter.get()).isEqualTo(0);
         
-        BaseWorkUnit dummyWork = new BaseWorkUnit(counter, (d) -> ((AtomicInteger) d).incrementAndGet());
+        BaseWorkUnit dummyWork = new BaseWorkUnit(counter, (d,o) -> ((AtomicInteger) d).incrementAndGet());
         unit.start();
         unit.intercept(dummyWork);
         unit.abort();
@@ -101,7 +101,7 @@ public class DefaultUnitOfWorkManagerTest {
         final AtomicInteger counter = new AtomicInteger(0);
         assertThat(counter.get()).isEqualTo(0);
         
-        WorkUnit<AtomicInteger> dummyWork = WorkUnit.create(counter, (d) -> d.incrementAndGet());
+        WorkUnit<AtomicInteger> dummyWork = WorkUnit.create(counter, (d,option) -> d.incrementAndGet());
 
         
         assertThrows(IllegalStateException.class, () -> unit.intercept(dummyWork), "Cannot intercept on not started unit");
@@ -120,8 +120,8 @@ public class DefaultUnitOfWorkManagerTest {
         
         final AtomicInteger picounter = new AtomicInteger(0);
         
-        BaseWorkUnit dummyWork = new BaseWorkUnit(counter, (d) -> ((AtomicInteger) d).incrementAndGet());
-        ProcessInstanceWorkUnit<?> piWork = new ProcessInstanceWorkUnit<>(null, (d) -> picounter.set(counter.get()));
+        BaseWorkUnit dummyWork = new BaseWorkUnit(counter, (d,o) -> ((AtomicInteger) d).incrementAndGet());
+        ProcessInstanceWorkUnit<?> piWork = new ProcessInstanceWorkUnit<>(null, (d,options) -> picounter.set(counter.get()));
         unit.start();
         // make sure that dummyWork is first added and then piWork
         unit.intercept(dummyWork);

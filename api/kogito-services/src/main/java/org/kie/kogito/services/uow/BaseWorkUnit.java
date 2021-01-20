@@ -16,6 +16,7 @@
 
 package org.kie.kogito.services.uow;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.kie.kogito.uow.WorkUnit;
@@ -24,15 +25,15 @@ import org.kie.kogito.uow.WorkUnit;
 public class BaseWorkUnit implements WorkUnit<Object> {
     
     private Object data;
-    private Consumer<Object> action;
+    private BiConsumer<Object,Object[]> action ;
     private Consumer<Object> compensation;
 
-    public BaseWorkUnit(Object data, Consumer<Object> action) {
+    public BaseWorkUnit(Object data, BiConsumer<Object,Object[]> action) {
         this.data = data;
         this.action = action;
     }
     
-    public BaseWorkUnit(Object data, Consumer<Object> action, Consumer<Object> compensation) {
+    public BaseWorkUnit(Object data, BiConsumer<Object,Object[]> action, Consumer<Object> compensation) {
         this.data = data;
         this.action = action;
         this.compensation = compensation;
@@ -44,8 +45,8 @@ public class BaseWorkUnit implements WorkUnit<Object> {
     }
 
     @Override
-    public void perform() {
-        action.accept(data());
+    public void perform(Object ... options) {
+        action.accept(data(), options);
     }
 
     @Override
@@ -54,6 +55,4 @@ public class BaseWorkUnit implements WorkUnit<Object> {
             compensation.accept(data());
         }
     }
-
-    
 }

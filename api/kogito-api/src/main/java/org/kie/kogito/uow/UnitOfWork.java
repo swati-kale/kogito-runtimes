@@ -47,5 +47,5 @@ public interface UnitOfWork {
      * Intercepts work that should be done as part of this unit of work.
      * @param work actual work to be invoked as part of this unit of work.
      */
-    void intercept(WorkUnit work);
+    void intercept(WorkUnit work, Object ... options);
 }

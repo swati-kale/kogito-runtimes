@@ -16,6 +16,7 @@
 
 package org.kie.kogito.uow;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -33,7 +34,7 @@ public interface WorkUnit<T> {
     /**
      * Performs action associated with the work unit usually consuming data
      */
-    void perform();
+    void perform(Object ... options);
     
     /**
      * Optional abort logic associated with the work unit
@@ -56,7 +57,7 @@ public interface WorkUnit<T> {
      * @param action work to be executed on given data
      * @return WorkUnit populated with data and action
      */
-    public static <S> WorkUnit<S> create(S data, Consumer<S> action) {
+    public static <S> WorkUnit<S> create(S data, BiConsumer<S,Object[]> action) {
         return new WorkUnit<S>() {
 
             @Override
@@ -65,8 +66,8 @@ public interface WorkUnit<T> {
             }
 
             @Override
-            public void perform() {
-                action.accept(data());
+            public void perform(Object ... options) {
+                action.accept(data(), options);
             }
             
         };
@@ -80,7 +81,7 @@ public interface WorkUnit<T> {
      * @param compensation revert action to be performed upon cancellation
      * @return WorkUnit populated with data, action and compensation
      */
-    public static <S> WorkUnit<S> create(S data, Consumer<S> action, Consumer<S> compensation) {
+    public static <S> WorkUnit<S> create(S data, BiConsumer<S,Object[]> action, Consumer<S> compensation) {
         return new WorkUnit<S>() {
 
             @Override
@@ -89,8 +90,8 @@ public interface WorkUnit<T> {
             }
 
             @Override
-            public void perform() {
-                action.accept(data());
+            public void perform(Object ... options) {
+                action.accept(data(), options);
             }
             
             @Override

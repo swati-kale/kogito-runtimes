@@ -32,6 +32,7 @@ public class DefaultProcessInstanceManager implements ProcessInstanceManager {
     public void addProcessInstance(ProcessInstance processInstance) {
         String id = UUID.randomUUID().toString();
         ((org.jbpm.process.instance.ProcessInstance) processInstance).setId(id);
+        ((org.jbpm.process.instance.ProcessInstance) processInstance).setVersion(1);
         internalAddProcessInstance(processInstance);
     }
 
