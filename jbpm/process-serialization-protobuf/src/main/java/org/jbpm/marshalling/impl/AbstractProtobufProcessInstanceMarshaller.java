@@ -131,7 +131,9 @@ public abstract class AbstractProtobufProcessInstanceMarshaller
         if (workFlow.getReferenceId() != null) {
             _instance.setReferenceId(workFlow.getReferenceId());
         }
-
+        
+        _instance.setVersion(workFlow.getVersion());
+        
         SwimlaneContextInstance swimlaneContextInstance = (SwimlaneContextInstance) workFlow.getContextInstance( SwimlaneContext.SWIMLANE_SCOPE );
         if ( swimlaneContextInstance != null ) {
             Map<String, String> swimlaneActors = swimlaneContextInstance.getSwimlaneActors();
@@ -767,6 +769,8 @@ public abstract class AbstractProtobufProcessInstanceMarshaller
         processInstance.internalSetErrorMessage(_instance.getErrorMessage());
         
         processInstance.setReferenceId(_instance.getReferenceId());
+        processInstance.setVersion(_instance.getVersion());
+
         
         for( String completedNodeId : _instance.getCompletedNodeIdsList() ) { 
             processInstance.addCompletedNodeId(completedNodeId);
@@ -849,7 +853,7 @@ public abstract class AbstractProtobufProcessInstanceMarshaller
 
         switch ( _node.getContent().getType() ) {
             case COMPOSITE_CONTEXT_NODE :
-            	
+                
             case DYNAMIC_NODE :
                 if ( _node.getContent().getComposite().getVariableCount() > 0 ) {
                     Context variableScope = ((org.jbpm.process.core.Process) ((org.jbpm.process.instance.ProcessInstance)

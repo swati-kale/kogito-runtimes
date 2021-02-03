@@ -80,6 +80,8 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
     protected Supplier<WorkflowProcessInstance> reloadSupplier;
 
     protected CompletionEventListener completionEventListener;
+    
+    protected Long version;
 
     public AbstractProcessInstance(AbstractProcess<T> process, T variables, ProcessRuntime rt) {
         this(process, variables, null, rt);
@@ -163,6 +165,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         processInstance = wpi;
         status = wpi.getState();
         id = wpi.getId();
+        version = wpi.getVersion();
         description = wpi.getDescription();
         setCorrelationKey(wpi.getCorrelationKey());
     }
@@ -208,6 +211,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
 
         ((InternalProcessRuntime) getProcessRuntime()).getProcessInstanceManager().addProcessInstance(this.processInstance);
         this.id = processInstance.getId();
+        this.version = processInstance.getVersion();
         addCompletionEventListener();
         org.kie.api.runtime.process.ProcessInstance processInstance = getProcessRuntime().startProcessInstance(this.id, trigger);
         addToUnitOfWork(pi -> ((MutableProcessInstances<T>) process.instances()).create(pi.id(), pi));
@@ -262,11 +266,17 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
     public int status() {
         return this.status;
     }
+    
+    @Override
+    public long version() {
+        return this.version;
+    }
 
     @Override
     public String id() {
         return this.id;
     }
+    
 
     @Override
     public String businessKey() {
@@ -315,6 +325,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         processInstance.setState(STATE_ACTIVE);
         ((InternalProcessRuntime) getProcessRuntime()).getProcessInstanceManager().addProcessInstance(this.processInstance);
         this.id = processInstance.getId();
+        this.version = processInstance.getVersion();
         addCompletionEventListener();
         if (referenceId != null) {
             processInstance.setReferenceId(referenceId);
@@ -375,7 +386,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
             this.processInstance = reloadSupplier.get();
             if (this.processInstance == null) {
                 throw new ProcessInstanceNotFoundException(id);
-            } else if(getProcessRuntime() != null) {
+            } else if (getProcessRuntime() != null) {
                 reconnect();
             }
         }
@@ -453,7 +464,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         if (processInstance.getState() != ProcessInstance.STATE_ACTIVE && processInstance.getState() != ProcessInstance.STATE_ERROR) {
             removeCompletionListener();
             syncProcessInstance(processInstance);
-            addToUnitOfWork(pi -> ((MutableProcessInstances<T>) process.instances()).remove(pi.id()));
+            addToUnitOfWork(pi -> ((MutableProcessInstances<T>) process.instances()).removeByVersion(pi.id(), pi));
         } else {
             addToUnitOfWork(pi -> ((MutableProcessInstances<T>) process.instances()).update(pi.id(), pi));
         }
@@ -605,6 +616,5 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         public String toExternalForm() {
             return correlationKey;
         }
-
     }
 }

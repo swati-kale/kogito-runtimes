@@ -211,4 +211,6 @@ public interface ProcessInstance<T> {
      * @return All the {@link AdHocFragment} in the process
      */
     Collection<AdHocFragment> adHocFragments();
+    
+    long version();
 }

@@ -96,4 +96,6 @@ public interface ProcessInstance extends org.kie.api.runtime.process.ProcessInst
     AgendaFilter getAgendaFilter();
 
     void setAgendaFilter( AgendaFilter agendaFilter );
+    
+    void setVersion(long version);
 }

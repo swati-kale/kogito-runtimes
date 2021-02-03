@@ -83,7 +83,9 @@ public class LightWorkItemManager implements KogitoWorkItemManager {
     }    
 
     public void internalAddWorkItem( KogitoWorkItem workItem) {
-        workItems.put(workItem.getId(), workItem);  
+        if (workItems.get(workItem.getId()) == null) {
+            workItems.put(workItem.getId(), workItem);
+        }
     }
 
     public void internalAbortWorkItem(String id) {

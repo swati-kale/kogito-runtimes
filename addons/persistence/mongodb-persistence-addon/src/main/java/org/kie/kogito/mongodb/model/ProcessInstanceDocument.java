@@ -27,6 +27,8 @@ public class ProcessInstanceDocument {
     private Document processInstance;
 
     private Map<String, Integer> strategies = new HashMap<>();
+    
+    private Long version;
 
     public ProcessInstanceDocument() {
         super();
@@ -54,5 +56,13 @@ public class ProcessInstanceDocument {
 
     public void setStrategies(Map<String, Integer> strategies) {
         this.strategies = strategies;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

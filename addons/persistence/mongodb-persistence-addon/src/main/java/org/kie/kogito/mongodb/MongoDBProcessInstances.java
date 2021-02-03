@@ -24,6 +24,7 @@ import org.kie.kogito.mongodb.model.ProcessInstanceDocument;
 import org.kie.kogito.persistence.transaction.TransactionExecutor;
 import org.kie.kogito.process.MutableProcessInstances;
 import org.kie.kogito.process.ProcessInstance;
+import org.kie.kogito.process.ProcessInstanceConcurrencyException;
 import org.kie.kogito.process.ProcessInstanceDuplicatedException;
 import org.kie.kogito.process.ProcessInstanceReadMode;
 import org.kie.kogito.process.impl.AbstractProcessInstance;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.kie.kogito.mongodb.utils.DocumentConstants.DOCUMENT_ID;
+import static org.kie.kogito.mongodb.utils.DocumentConstants.VERSION;
 import static org.kie.kogito.mongodb.utils.DocumentUtils.getCollection;
 import static org.kie.kogito.process.ProcessInstanceReadMode.MUTABLE;
 
@@ -102,10 +104,16 @@ public class MongoDBProcessInstances<T extends Model> implements MutableProcessI
                     }
                 }
             } else {
+                long version = doc.getVersion();
+                doc.getProcessInstance().put(VERSION, version + 1);
+                doc.setVersion(version + 1);
                 if (clientSession != null) {
-                    collection.replaceOne(clientSession, Filters.eq(DOCUMENT_ID, id), doc);
+                    ProcessInstanceDocument piDoc = collection.findOneAndReplace(clientSession,Filters.and(Filters.eq(DOCUMENT_ID, id),Filters.eq(VERSION, version)), doc);
+                    if (piDoc==null) {
+                        throw new ProcessInstanceConcurrencyException("The document with ID: "+id+" was updated or deleted by other request.");
+                    } 
                 } else {
-                    collection.replaceOne(Filters.eq(DOCUMENT_ID, id), doc);
+                    collection.replaceOne(Filters.and(Filters.eq(DOCUMENT_ID, id),Filters.eq(VERSION, version)), doc);
                 }
             }
         }
@@ -130,6 +138,19 @@ public class MongoDBProcessInstances<T extends Model> implements MutableProcessI
             collection.deleteOne(clientSession, Filters.eq(DOCUMENT_ID, id));
         } else {
             collection.deleteOne(Filters.eq(DOCUMENT_ID, id));
+        }
+    }
+    
+    @Override
+    public void removeByVersion(String id, ProcessInstance<T> instance) {
+        ClientSession clientSession = Optional.ofNullable(transactionExecutor).map(t -> (ClientSession) t.getResource()).orElse(null);
+        if (clientSession != null) {
+            ProcessInstanceDocument piDoc = collection. findOneAndDelete(clientSession,Filters.and(Filters.eq(DOCUMENT_ID, id),Filters.eq(VERSION, instance.version())));
+            if (piDoc==null) {
+                throw new ProcessInstanceConcurrencyException("The document with ID: "+id+" was updated or deleted by other request.");
+            }
+        } else {
+            collection.deleteOne(Filters.and(Filters.eq(DOCUMENT_ID, id),Filters.eq(VERSION, instance.version())));
         }
     }
 

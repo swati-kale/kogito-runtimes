@@ -26,6 +26,6 @@ public class DocumentConstants {
     public static final String PROCESS_INSTANCE = "processInstance";
     public static final String DOCUMENT_MARSHALLING_ERROR_MSG = "Error while marshalling process instance with id as document : ";
     public static final String DOCUMENT_UNMARSHALLING_ERROR_MSG = "Error while unmarshalling document for process instance with id : ";
-
+    public static final String VERSION = "version";
     private DocumentConstants() {}
 }

@@ -119,5 +119,6 @@ public interface ProcessInstance
      * @return reference id or null if not set
      */
     String getReferenceId();
-
+    
+    long getVersion();
 }

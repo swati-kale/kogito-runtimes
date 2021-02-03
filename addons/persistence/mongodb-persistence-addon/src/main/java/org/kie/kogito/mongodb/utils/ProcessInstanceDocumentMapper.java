@@ -33,6 +33,8 @@ import org.kie.kogito.mongodb.model.ProcessInstanceDocument;
 import static org.kie.kogito.mongodb.utils.DocumentConstants.PROCESS_INSTANCE_ID;
 import static org.kie.kogito.mongodb.utils.DocumentConstants.VALUE;
 import static org.kie.kogito.mongodb.utils.DocumentConstants.VARIABLE;
+import static org.kie.kogito.mongodb.utils.DocumentConstants.VERSION;
+
 import static org.kie.kogito.mongodb.utils.DocumentUtils.getObjectMapper;
 
 public class ProcessInstanceDocumentMapper implements BiFunction<KogitoProcessMarshallerWriteContext, JBPMMessages.ProcessInstance, ProcessInstanceDocument> {
@@ -45,6 +47,7 @@ public class ProcessInstanceDocumentMapper implements BiFunction<KogitoProcessMa
             doc.setId(instanceNode.get(PROCESS_INSTANCE_ID).asText());
             applyVariables(instanceNode, VARIABLE);
             doc.setProcessInstance(Optional.ofNullable(instanceNode).map(json -> Document.parse(json.toString())).orElse(null));
+            doc.setVersion(instanceNode.get(VERSION).asLong());
             if (context != null) {
                 doc.setStrategies(context.getUsedStrategies().entrySet().stream().collect(Collectors.toMap(e -> e.getKey().getName(), Map.Entry::getValue)));
             }
@@ -69,5 +72,4 @@ public class ProcessInstanceDocumentMapper implements BiFunction<KogitoProcessMa
         }
         parent.forEach(child -> applyVariables(child, variable));
     }
-
 }

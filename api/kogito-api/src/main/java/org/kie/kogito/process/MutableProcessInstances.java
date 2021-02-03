@@ -28,5 +28,8 @@ public interface MutableProcessInstances<T> extends ProcessInstances<T> {
     default boolean isActive(ProcessInstance<T> instance) {
         return instance.status() == ProcessInstance.STATE_ACTIVE || instance.status() == ProcessInstance.STATE_ERROR;        
     }
-
+    
+    default void removeByVersion(String id, ProcessInstance<T> instance) {
+        remove(id);
+    }
 }
