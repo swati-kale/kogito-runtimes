@@ -55,6 +55,7 @@ public abstract class ProcessInstanceImpl implements ProcessInstance,
     private String rootProcessInstanceId;
     private String description;
     private String rootProcessId;
+    private long version;
 
     public long getId() {
         throw new UnsupportedOperationException();
@@ -66,6 +67,14 @@ public abstract class ProcessInstanceImpl implements ProcessInstance,
 
     public void setId(final String id) {
         this.id = id;
+    }
+
+    public long getVersion() {
+        return this.version;
+    }
+
+    public void setVersion(final long version) {
+        this.version = version;
     }
 
     public void updateProcess(final Process process) {

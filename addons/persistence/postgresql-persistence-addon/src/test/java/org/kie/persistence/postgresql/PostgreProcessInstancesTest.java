@@ -125,5 +125,10 @@ class PostgreProcessInstancesTest {
             return instances;
         }
 
+        @Override
+        public boolean lock() {
+            return false;
+        }
+
     }
 }

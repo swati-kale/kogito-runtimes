@@ -52,6 +52,7 @@ import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.expr.BooleanLiteralExpr;
 import com.github.javaparser.ast.expr.EnclosedExpr;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.FieldAccessExpr;
@@ -95,6 +96,8 @@ public class PersistenceGenerator extends AbstractGenerator {
     public static final String KOGITO_PERSISTENCE_AUTO_DDL = "kogito.persistence.auto.ddl";
     public static final String KOGITO_POSTGRESQL_CONNECTION_URI = "kogito.persistence.postgresql.connection.uri";
     private static final String KOGITO_PERSISTENCE_QUERY_TIMEOUT = "kogito.persistence.query.timeout.millis";
+    private static final String OPTIMISTIC_LOCK = "lock";
+    private static final String OPTIMISTIC_LOCK_PROP = "kogito.persistence.optimistic.lock";
 
     private final ProtoGenerator protoGenerator;
 
@@ -513,12 +516,30 @@ public class PersistenceGenerator extends AbstractGenerator {
                     new CompilationUnit(KOGITO_PROCESS_INSTANCE_PACKAGE).addType(pgClientProducerClazz));
             generatedPgClientFile.ifPresent(generatedFiles::add);
         }
-
+        addOptimisticLockFlag(persistenceProviderClazz);
         Optional<GeneratedFile> generatedPgClientFile = generatePersistenceProviderClazz(persistenceProviderClazz,
                 new CompilationUnit(KOGITO_PROCESS_INSTANCE_PACKAGE).addType(persistenceProviderClazz));
         generatedPgClientFile.ifPresent(generatedFiles::add);
 
         return generatedFiles;
+    }
+
+    private void addOptimisticLockFlag(ClassOrInterfaceDeclaration persistenceProviderClazz) {
+        FieldDeclaration lockField = new FieldDeclaration().addVariable(new VariableDeclarator()
+                .setType(new ClassOrInterfaceType(null, new SimpleName(Optional.class.getCanonicalName()), NodeList.nodeList(new ClassOrInterfaceType(null, Boolean.class.getCanonicalName()))))
+                .setName(OPTIMISTIC_LOCK));
+        context().getDependencyInjectionAnnotator().withConfigInjection(lockField, OPTIMISTIC_LOCK_PROP);
+
+        BlockStmt lockMethodBody = new BlockStmt();
+        lockMethodBody.addStatement(new ReturnStmt(new MethodCallExpr(new NameExpr(OPTIMISTIC_LOCK), OR_ELSE).addArgument(new BooleanLiteralExpr(false))));
+        MethodDeclaration enabledMethod = new MethodDeclaration()
+                .addModifier(Keyword.PUBLIC)
+                .setName(OPTIMISTIC_LOCK)
+                .setType("boolean")
+                .setBody(lockMethodBody);
+
+        persistenceProviderClazz.addMember(lockField);
+        persistenceProviderClazz.addMember(enabledMethod);
     }
 
     private ConstructorDeclaration createConstructorForClazz(ClassOrInterfaceDeclaration persistenceProviderClazz) {

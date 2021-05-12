@@ -332,6 +332,17 @@ public final class KogitoProcessInstanceProtobuf {
      */
     com.google.protobuf.ByteString
         getCompletedNodeIdsBytes(int index);
+
+    /**
+     * <code>int64 version = 21;</code>
+     * @return Whether the version field is set.
+     */
+    boolean hasVersion();
+    /**
+     * <code>int64 version = 21;</code>
+     * @return The version.
+     */
+    long getVersion();
   }
   /**
    * Protobuf type {@code org.kie.kogito.serialization.process.protobuf.ProcessInstance}
@@ -527,6 +538,11 @@ public final class KogitoProcessInstanceProtobuf {
                 mutable_bitField0_ |= 0x00004000;
               }
               completedNodeIds_.add(s);
+              break;
+            }
+            case 168: {
+              bitField0_ |= 0x00002000;
+              version_ = input.readInt64();
               break;
             }
             default: {
@@ -1283,6 +1299,25 @@ public final class KogitoProcessInstanceProtobuf {
       return completedNodeIds_.getByteString(index);
     }
 
+    public static final int VERSION_FIELD_NUMBER = 21;
+    private long version_;
+    /**
+     * <code>int64 version = 21;</code>
+     * @return Whether the version field is set.
+     */
+    @java.lang.Override
+    public boolean hasVersion() {
+      return ((bitField0_ & 0x00002000) != 0);
+    }
+    /**
+     * <code>int64 version = 21;</code>
+     * @return The version.
+     */
+    @java.lang.Override
+    public long getVersion() {
+      return version_;
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -1356,6 +1391,9 @@ public final class KogitoProcessInstanceProtobuf {
       }
       for (int i = 0; i < completedNodeIds_.size(); i++) {
         com.google.protobuf.GeneratedMessageV3.writeString(output, 20, completedNodeIds_.getRaw(i));
+      }
+      if (((bitField0_ & 0x00002000) != 0)) {
+        output.writeInt64(21, version_);
       }
       unknownFields.writeTo(output);
     }
@@ -1437,6 +1475,10 @@ public final class KogitoProcessInstanceProtobuf {
         }
         size += dataSize;
         size += 2 * getCompletedNodeIdsList().size();
+      }
+      if (((bitField0_ & 0x00002000) != 0)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(21, version_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -1532,6 +1574,11 @@ public final class KogitoProcessInstanceProtobuf {
           .equals(other.getSwimlaneContextList())) return false;
       if (!getCompletedNodeIdsList()
           .equals(other.getCompletedNodeIdsList())) return false;
+      if (hasVersion() != other.hasVersion()) return false;
+      if (hasVersion()) {
+        if (getVersion()
+            != other.getVersion()) return false;
+      }
       if (!unknownFields.equals(other.unknownFields)) return false;
       return true;
     }
@@ -1615,6 +1662,11 @@ public final class KogitoProcessInstanceProtobuf {
       if (getCompletedNodeIdsCount() > 0) {
         hash = (37 * hash) + COMPLETEDNODEIDS_FIELD_NUMBER;
         hash = (53 * hash) + getCompletedNodeIdsList().hashCode();
+      }
+      if (hasVersion()) {
+        hash = (37 * hash) + VERSION_FIELD_NUMBER;
+        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
+            getVersion());
       }
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
@@ -1804,6 +1856,8 @@ public final class KogitoProcessInstanceProtobuf {
         }
         completedNodeIds_ = com.google.protobuf.LazyStringArrayList.EMPTY;
         bitField0_ = (bitField0_ & ~0x00004000);
+        version_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00008000);
         return this;
       }
 
@@ -1911,6 +1965,10 @@ public final class KogitoProcessInstanceProtobuf {
           bitField0_ = (bitField0_ & ~0x00004000);
         }
         result.completedNodeIds_ = completedNodeIds_;
+        if (((from_bitField0_ & 0x00008000) != 0)) {
+          result.version_ = version_;
+          to_bitField0_ |= 0x00002000;
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -2070,6 +2128,9 @@ public final class KogitoProcessInstanceProtobuf {
             completedNodeIds_.addAll(other.completedNodeIds_);
           }
           onChanged();
+        }
+        if (other.hasVersion()) {
+          setVersion(other.getVersion());
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -3805,6 +3866,45 @@ public final class KogitoProcessInstanceProtobuf {
         onChanged();
         return this;
       }
+
+      private long version_ ;
+      /**
+       * <code>int64 version = 21;</code>
+       * @return Whether the version field is set.
+       */
+      @java.lang.Override
+      public boolean hasVersion() {
+        return ((bitField0_ & 0x00008000) != 0);
+      }
+      /**
+       * <code>int64 version = 21;</code>
+       * @return The version.
+       */
+      @java.lang.Override
+      public long getVersion() {
+        return version_;
+      }
+      /**
+       * <code>int64 version = 21;</code>
+       * @param value The version to set.
+       * @return This builder for chaining.
+       */
+      public Builder setVersion(long value) {
+        bitField0_ |= 0x00008000;
+        version_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>int64 version = 21;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearVersion() {
+        bitField0_ = (bitField0_ & ~0x00008000);
+        version_ = 0L;
+        onChanged();
+        return this;
+      }
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -3876,7 +3976,7 @@ public final class KogitoProcessInstanceProtobuf {
       "rotobuf/kogito_process_instance.proto\022-o" +
       "rg.kie.kogito.serialization.process.prot" +
       "obuf\032@org/kie/kogito/serialization/proce" +
-      "ss/protobuf/kogito_types.proto\"\312\007\n\017Proce" +
+      "ss/protobuf/kogito_types.proto\"\354\007\n\017Proce" +
       "ssInstance\022\024\n\014process_type\030\001 \001(\t\022\022\n\nproc" +
       "ess_id\030\002 \001(\t\022\n\n\002id\030\003 \001(\t\022\'\n\032parent_proce" +
       "ss_instance_id\030\004 \001(\tH\000\210\001\001\022\031\n\014business_ke" +
@@ -3894,15 +3994,15 @@ public final class KogitoProcessInstanceProtobuf {
       "ation.process.protobuf.WorkflowContextH\014" +
       "\210\001\001\022X\n\020swimlane_context\030\023 \003(\0132>.org.kie." +
       "kogito.serialization.process.protobuf.Sw" +
-      "imlaneContext\022\030\n\020completedNodeIds\030\024 \003(\tB" +
-      "\035\n\033_parent_process_instance_idB\017\n\r_busin" +
-      "ess_keyB\017\n\r_deploymentIdB\016\n\014_description" +
-      "B\r\n\013_start_dateB\030\n\026_node_instance_counte" +
-      "rB\033\n\031_root_process_instance_idB\022\n\020_root_" +
-      "process_idB\020\n\016_error_node_idB\020\n\016_error_m" +
-      "essageB\017\n\r_reference_idB\006\n\004_slaB\n\n\010_cont" +
-      "extB\037B\035KogitoProcessInstanceProtobufb\006pr" +
-      "oto3"
+      "imlaneContext\022\030\n\020completedNodeIds\030\024 \003(\t\022" +
+      "\024\n\007version\030\025 \001(\003H\r\210\001\001B\035\n\033_parent_process" +
+      "_instance_idB\017\n\r_business_keyB\017\n\r_deploy" +
+      "mentIdB\016\n\014_descriptionB\r\n\013_start_dateB\030\n" +
+      "\026_node_instance_counterB\033\n\031_root_process" +
+      "_instance_idB\022\n\020_root_process_idB\020\n\016_err" +
+      "or_node_idB\020\n\016_error_messageB\017\n\r_referen" +
+      "ce_idB\006\n\004_slaB\n\n\010_contextB\n\n\010_versionB\037B" +
+      "\035KogitoProcessInstanceProtobufb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -3914,7 +4014,7 @@ public final class KogitoProcessInstanceProtobuf {
     internal_static_org_kie_kogito_serialization_process_protobuf_ProcessInstance_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_org_kie_kogito_serialization_process_protobuf_ProcessInstance_descriptor,
-        new java.lang.String[] { "ProcessType", "ProcessId", "Id", "ParentProcessInstanceId", "BusinessKey", "DeploymentId", "Description", "State", "StartDate", "NodeInstanceCounter", "SignalCompletion", "RootProcessInstanceId", "RootProcessId", "ErrorNodeId", "ErrorMessage", "ReferenceId", "Sla", "Context", "SwimlaneContext", "CompletedNodeIds", "ParentProcessInstanceId", "BusinessKey", "DeploymentId", "Description", "StartDate", "NodeInstanceCounter", "RootProcessInstanceId", "RootProcessId", "ErrorNodeId", "ErrorMessage", "ReferenceId", "Sla", "Context", });
+        new java.lang.String[] { "ProcessType", "ProcessId", "Id", "ParentProcessInstanceId", "BusinessKey", "DeploymentId", "Description", "State", "StartDate", "NodeInstanceCounter", "SignalCompletion", "RootProcessInstanceId", "RootProcessId", "ErrorNodeId", "ErrorMessage", "ReferenceId", "Sla", "Context", "SwimlaneContext", "CompletedNodeIds", "Version", "ParentProcessInstanceId", "BusinessKey", "DeploymentId", "Description", "StartDate", "NodeInstanceCounter", "RootProcessInstanceId", "RootProcessId", "ErrorNodeId", "ErrorMessage", "ReferenceId", "Sla", "Context", "Version", });
     org.kie.kogito.serialization.process.protobuf.KogitoTypesProtobuf.getDescriptor();
   }
 

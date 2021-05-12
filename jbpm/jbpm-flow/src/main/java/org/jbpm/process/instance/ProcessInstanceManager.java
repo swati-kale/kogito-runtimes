@@ -39,4 +39,6 @@ public interface ProcessInstanceManager {
 
     void clearProcessInstancesState();
 
+    void lock(boolean lock);
+
 }

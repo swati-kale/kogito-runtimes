@@ -134,6 +134,8 @@ public class ProtobufProcessInstanceWriter {
         if (workFlow.getReferenceId() != null) {
             instance.setReferenceId(workFlow.getReferenceId());
         }
+        
+        instance.setVersion(workFlow.getVersion());
 
         instance.addAllSwimlaneContext(buildSwimlaneContexts((SwimlaneContextInstance) workFlow.getContextInstance(SwimlaneContext.SWIMLANE_SCOPE)));
 

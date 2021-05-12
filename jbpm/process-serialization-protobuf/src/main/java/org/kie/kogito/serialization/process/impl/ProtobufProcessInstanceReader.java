@@ -167,6 +167,8 @@ public class ProtobufProcessInstanceReader {
 
         processInstance.setReferenceId(processInstanceProtobuf.getReferenceId());
 
+        processInstance.setVersion(processInstanceProtobuf.getVersion());
+        
         if (processInstanceProtobuf.getSwimlaneContextCount() > 0) {
             SwimlaneContextInstance swimlaneContextInstance = (SwimlaneContextInstance) processInstance.getContextInstance(SwimlaneContext.SWIMLANE_SCOPE);
             for (KogitoTypesProtobuf.SwimlaneContext _swimlane : processInstanceProtobuf.getSwimlaneContextList()) {

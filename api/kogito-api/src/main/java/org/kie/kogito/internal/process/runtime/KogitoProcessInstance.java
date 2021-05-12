@@ -86,4 +86,6 @@ public interface KogitoProcessInstance extends ProcessInstance, KogitoEventListe
      * @return the process instance description
      */
     String getDescription();
+
+    long getVersion();
 }

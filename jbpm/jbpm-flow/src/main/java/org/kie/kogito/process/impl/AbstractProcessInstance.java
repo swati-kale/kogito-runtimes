@@ -85,6 +85,8 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
 
     protected CompletionEventListener completionEventListener;
 
+    protected Long version;
+
     public AbstractProcessInstance(AbstractProcess<T> process, T variables, ProcessRuntime rt) {
         this(process, variables, null, rt);
     }
@@ -128,6 +130,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         if (processInstance.getKnowledgeRuntime() == null) {
             processInstance.setKnowledgeRuntime(getProcessRuntime().getInternalKieRuntime());
         }
+        getProcessRuntime().getProcessInstanceManager().lock(((MutableProcessInstances<T>) process.instances()).lock());
         processInstance.reconnect();
         processInstance.setMetaData(KOGITO_PROCESS_INSTANCE, this);
         addCompletionEventListener();
@@ -168,6 +171,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         processInstance = wpi;
         status = wpi.getState();
         id = wpi.getStringId();
+        version = wpi.getVersion();
         description = wpi.getDescription();
         setCorrelationKey(wpi.getCorrelationKey());
     }
@@ -215,6 +219,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
             processInstance.setReferenceId(referenceId);
         }
 
+        getProcessRuntime().getProcessInstanceManager().lock(((MutableProcessInstances<T>) process.instances()).lock());
         getProcessRuntime().getProcessInstanceManager().addProcessInstance(this.processInstance);
         this.id = processInstance.getStringId();
         addCompletionEventListener();
@@ -293,6 +298,18 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
     }
 
     @Override
+    public long version() {
+        return this.version;
+    }
+
+    @Override
+    public void incrementVersion() {
+        processInstance.setVersion(processInstance.getVersion() + 1);
+        this.version = processInstance.getVersion();
+
+    }
+
+    @Override
     public T updateVariables(T updates) {
         Map<String, Object> map = bind(updates);
 
@@ -324,6 +341,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         processInstance.setState(STATE_ACTIVE);
         getProcessRuntime().getProcessInstanceManager().addProcessInstance(this.processInstance);
         this.id = processInstance.getStringId();
+        this.version = processInstance.getVersion();
         addCompletionEventListener();
         if (referenceId != null) {
             processInstance.setReferenceId(referenceId);

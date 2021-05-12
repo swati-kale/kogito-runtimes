@@ -96,4 +96,6 @@ public interface ProcessInstance extends KogitoProcessInstance,
     AgendaFilter getAgendaFilter();
 
     void setAgendaFilter(AgendaFilter agendaFilter);
+
+    void setVersion(long version);
 }

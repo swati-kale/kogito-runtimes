@@ -120,6 +120,16 @@ public class AbstractProcessInstanceTest {
         return nodeInstance;
     }
 
+    @Test
+    public void testVersion() {
+        assertThat(processInstance.status()).isEqualTo(KogitoProcessInstance.STATE_PENDING);
+        assertThat(processInstance.id()).isNull();
+        assertThat(processInstance.businessKey()).isNull();
+        assertThat(processInstance.version()).isZero();
+        processInstance.version = 1l;
+        assertThat(processInstance.version()).isEqualTo(1l);
+    }
+
     static class TestProcessInstance extends AbstractProcessInstance<TestModel> {
 
         public TestProcessInstance(AbstractProcess<TestModel> process, TestModel variables, InternalProcessRuntime rt) {

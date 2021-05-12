@@ -45,8 +45,10 @@ public abstract class KogitoProcessInstancesFactory implements ProcessInstancesF
         return this.client;
     }
 
+    public abstract boolean lock();
+
     @Override
     public PostgreProcessInstances createProcessInstances(Process<?> process) {
-        return new PostgreProcessInstances(process, client(), autoDDL, queryTimeout);
+        return new PostgreProcessInstances(process, client(), autoDDL, queryTimeout, lock());
     }
 }
